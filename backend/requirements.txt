@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+pydantic==2.6.4
+pydantic-settings==2.2.1
+boto3==1.42.47
