@@ -1,0 +1,31 @@
+# Environment / Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+backend/venv/
+backend/.pytest_cache/
+
+# Node / React
+frontend/node_modules/
+frontend/dist/
+
+# Docker
+postgres_data/
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Any virtual environment anywhere
+venv/
+myvenv/
+.venv/
+env/
