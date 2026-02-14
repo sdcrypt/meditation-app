@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     AWS_S3_BUCKET: str = ""
 
     # Optional Admin API Key
-    ADMIN_API_KEY: str = "85da5853a21895bce88893b1fddf03d1a49b449b3271e4bc6b1338e068baa627"
+    ADMIN_API_KEY: str = "dev-secret"
 
     class Config:
         env_file = ".env"
