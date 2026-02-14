@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from app.api.v1 import sessions
 
 from app.api.v1 import health, meditations
 from app.api.v1.admin import meditations as admin_meditations
@@ -21,4 +22,10 @@ api_router.include_router(
     admin_meditations.router,
     prefix="/admin/meditations",
     tags=["Admin"],
+)
+
+api_router.include_router(
+    sessions.router,
+    prefix="/sessions",
+    tags=["Sessions"],
 )

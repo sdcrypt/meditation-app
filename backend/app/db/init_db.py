@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from app.db.session import engine, SessionLocal
 from app.db.base import Base
 from app.models.meditation import Meditation
+from app.models.session import MeditationSession
+
 
 
 def init_db():
