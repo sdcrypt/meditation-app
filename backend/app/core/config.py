@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     # Optional Admin API Key
     ADMIN_API_KEY: str = "dev-secret"
 
+    # Logging
+    LOG_LEVEL: str = "INFO"
+
     class Config:
         env_file = ".env"
         case_sensitive = True
