@@ -5,8 +5,10 @@ from app.core.admin_auth import verify_admin_key
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
 from app.models.meditation import Meditation
+from app.models.session import MeditationSession
 from app.schemas.meditation import MeditationCreate, MeditationRead, MeditationUpdate
 from app.services.s3_service import S3Service
+
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -105,3 +107,20 @@ def update_meditation(
     db.refresh(meditation)
     logger.info("Meditation updated successfully: meditation_id=%s", meditation_id)
     return meditation
+
+
+@router.delete("/{meditation_id}", dependencies=[Depends(verify_admin_key)])
+def delete_meditation(
+    meditation_id: int,
+    db: Session = Depends(get_db),
+):
+    logger.info("Deleting meditation_id: %s", meditation_id)
+    meditation = db.query(Meditation).filter(Meditation.id == meditation_id).first()
+    if not meditation:
+        raise HTTPException(status_code=404, detail="Meditation not found")
+    # Delete related meditation_sessions first to avoid FK violation
+    db.query(MeditationSession).filter(MeditationSession.meditation_id == meditation_id).delete()
+    db.delete(meditation)
+    db.commit()
+    logger.info("Meditation deleted successfully: %s", meditation_id)
+    return {"message": "Meditation deleted successfully"}

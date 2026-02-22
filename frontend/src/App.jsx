@@ -1,6 +1,13 @@
+/**
+ * @file App.jsx
+ * @description Root application component for the meditation app. Sets up React Router,
+ * global layout (dark theme, nav), and route definitions for Home, Explore, and Admin.
+ */
+
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import Home from "./pages/Home";
 import Explore from "./pages/Explore";
+import Admin from "./pages/Admin";
 
 // export default function Home() {
 //   return (
@@ -11,6 +18,12 @@ import Explore from "./pages/Explore";
 //   );
 // }
 
+/**
+ * Root App component. Wraps the app in BrowserRouter and renders:
+ * - A top nav with links to Home and Explore
+ * - Routes: "/" (Home), "/explore" (Explore), "/admin" (Admin)
+ * @returns {JSX.Element} The app shell with router and routes
+ */
 export default function App() {
   return (
     <BrowserRouter>
@@ -27,6 +40,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/explore" element={<Explore />} />
+          <Route path="/admin" element={<Admin />} />
         </Routes>
       </div>
     </BrowserRouter>
