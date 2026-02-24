@@ -3,6 +3,7 @@ from app.api.v1 import sessions
 
 from app.api.v1 import health, meditations
 from app.api.v1.admin import meditations as admin_meditations
+from app.api.v1 import auth
 
 api_router = APIRouter()
 
@@ -28,4 +29,10 @@ api_router.include_router(
     sessions.router,
     prefix="/sessions",
     tags=["Sessions"],
+)
+
+api_router.include_router(
+    auth.router,
+    prefix="/auth",
+    tags=["Auth"],
 )

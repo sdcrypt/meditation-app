@@ -4,6 +4,7 @@ from app.db.session import engine, SessionLocal
 from app.db.base import Base
 from app.models.meditation import Meditation
 from app.models.session import MeditationSession
+from app.models.user import User
 
 
 

@@ -8,6 +8,7 @@ from app.models.meditation import Meditation
 from app.models.session import MeditationSession
 from app.schemas.meditation import MeditationCreate, MeditationRead, MeditationUpdate
 from app.services.s3_service import S3Service
+from app.core.dependencies import require_admin
 
 
 logger = get_logger(__name__)
@@ -22,7 +23,7 @@ def get_db():
         db.close()
 
 
-@router.post("/", response_model=MeditationRead, dependencies=[Depends(verify_admin_key)])
+@router.post("/", response_model=MeditationRead, dependencies=[Depends(require_admin)])
 def create_meditation(
     payload: MeditationCreate,
     db: Session = Depends(get_db),
@@ -47,7 +48,7 @@ def create_meditation(
 @router.post(
     "/{meditation_id}/upload-audio",
     response_model=MeditationRead,
-    dependencies=[Depends(verify_admin_key)],
+    dependencies=[Depends(require_admin)],
 )
 def upload_audio(
     meditation_id: int,
@@ -83,7 +84,7 @@ def upload_audio(
 @router.patch(
     "/{meditation_id}",
     response_model=MeditationRead,
-    dependencies=[Depends(verify_admin_key)],
+    dependencies=[Depends(require_admin)],
 )
 def update_meditation(
     meditation_id: int,
@@ -109,7 +110,7 @@ def update_meditation(
     return meditation
 
 
-@router.delete("/{meditation_id}", dependencies=[Depends(verify_admin_key)])
+@router.delete("/{meditation_id}", dependencies=[Depends(require_admin)])
 def delete_meditation(
     meditation_id: int,
     db: Session = Depends(get_db),

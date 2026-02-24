@@ -6,3 +6,5 @@ pydantic==2.6.4
 pydantic-settings==2.2.1
 boto3==1.42.47
 python-multipart
+python-jose[cryptography]
+passlib[bcrypt]
