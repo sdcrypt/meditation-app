@@ -1,29 +1,24 @@
 /**
  * @file Admin.jsx
- * @description Admin page for the meditation app. Flow: (1) Unlock with admin key (X-ADMIN-KEY).
- * (2) Add new meditations via form (POST create + optional audio upload). (3) List existing
- * meditations with inline edit (PATCH), replace audio (POST upload-audio), and delete (DELETE).
+ * @description Admin page for the meditation app.
+ * Flow: (1) Add new meditations via form (POST create + optional audio upload).
+ * (2) List existing meditations with inline edit (PATCH), replace audio (POST upload-audio),
+ * and delete (DELETE), all authorized via JWT in the Authorization header.
  */
 
 import { useEffect, useState } from "react";
 import { API_BASE_URL } from "../config";
+import { getToken, logout } from "../auth";
 
 /**
- * Admin page component. Shows an unlock form until a valid admin key is submitted,
- * then displays all meditations with editable title/category/duration, audio upload,
- * and save/delete actions.
- * @returns {JSX.Element} Either the unlock form or the meditation list UI
+ * Admin page component. Displays all meditations with editable title/category/duration,
+ * audio upload, and save/delete actions.
+ * @returns {JSX.Element} Admin dashboard UI
  */
 export default function Admin() {
-  // --- Auth & list state ---
-  /** Admin key entered in the unlock form; sent as X-ADMIN-KEY on all admin API calls. */
-  const [adminKey, setAdminKey] = useState("");
-  /** True after user submits the unlock form; gates showing the meditation list and forms. */
-  const [adminKeySubmitted, setAdminKeySubmitted] = useState(false);
+  // --- Meditations list state ---
   /** List of meditations from GET /meditations; each has id, title, category, duration_sec, audio_url, etc. */
   const [meditations, setMeditations] = useState([]);
-  /** Validation error message for the unlock form (e.g. empty key). */
-  const [keyError, setKeyError] = useState(null);
 
   // --- Upload / create loading state ---
   /** Id of the meditation currently uploading audio; used to show "Uploading…" and disable that row's file input. */
@@ -52,36 +47,23 @@ export default function Admin() {
       .then(setMeditations);
   };
 
-  /** When admin key is submitted, fetch the meditation list once (and whenever key/submitted change). */
+  /** On mount, fetch the meditation list once. */
   useEffect(() => {
-    if (adminKeySubmitted && adminKey) fetchMeditations();
-  }, [adminKeySubmitted, adminKey]);
-
-  /**
-   * Handles unlock form submit. Validates that admin key is non-empty, then marks
-   * as submitted so the meditation list is shown and fetched.
-   * @param {React.FormEvent} e - Form submit event
-   */
-  const handleUnlock = (e) => {
-    e.preventDefault();
-    setKeyError(null);
-    if (!adminKey.trim()) {
-      setKeyError("Please enter an admin key.");
-      return;
-    }
-    setAdminKeySubmitted(true);
-  };
+    fetchMeditations();
+  }, []);
 
   /**
    * Deletes a meditation by id using the admin API (DELETE /admin/meditations/{id}).
-   * Sends X-ADMIN-KEY header. On success refetches the list; on error shows alert.
+   * Sends JWT Authorization header. On success refetches the list; on error shows alert.
    * @param {number|string} id - Meditation id to delete
    * @returns {Promise<void>}
    */
   const deleteMeditation = async (id) => {
     const res = await fetch(`${API_BASE_URL}/admin/meditations/${id}`, {
       method: "DELETE",
-      headers: { "X-ADMIN-KEY": adminKey },
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -106,11 +88,16 @@ export default function Admin() {
     const formData = new FormData();
     formData.append("file", file);
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/meditations/${id}/upload-audio`, {
-        method: "POST",
-        headers: { "X-ADMIN-KEY": adminKey },
-        body: formData,
-      });
+      const res = await fetch(
+        `${API_BASE_URL}/admin/meditations/${id}/upload-audio`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+          },
+          body: formData,
+        }
+      );
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         alert(err.detail ?? `Upload failed: ${res.status}`);
@@ -124,7 +111,7 @@ export default function Admin() {
 
   /**
    * Updates a meditation via PATCH /admin/meditations/{id}. Sends title, category, duration_sec.
-   * On success refetches the list; on error shows alert.
+   * Uses JWT Authorization header. On success refetches the list; on error shows alert.
    * @param {{ id: number|string, title: string, category: string, duration_sec: number|string }} m - Meditation with fields to save
    * @returns {Promise<void>}
    */
@@ -133,7 +120,7 @@ export default function Admin() {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        "X-ADMIN-KEY": adminKey,
+        Authorization: `Bearer ${getToken()}`,
       },
       body: JSON.stringify({
         title: m.title,
@@ -163,8 +150,8 @@ export default function Admin() {
 
   /**
    * Creates a new meditation via POST, then optionally uploads audio for it.
-   * Flow: validate form → POST /admin/meditations/ (title, category, duration_sec, level) →
-   * if file selected, POST /admin/meditations/{id}/upload-audio → reset form and refetch list.
+   * Flow: validate form → POST /admin/meditations/ (title, category, duration_sec, level) with JWT →
+   * if file selected, POST /admin/meditations/{id}/upload-audio with JWT → reset form and refetch list.
    * This adds a new meditation (and new audio); it does not replace existing ones.
    * @param {React.FormEvent} e - Form submit event
    * @returns {Promise<void>}
@@ -185,7 +172,7 @@ export default function Admin() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-ADMIN-KEY": adminKey,
+          Authorization: `Bearer ${getToken()}`,
         },
         body: JSON.stringify({
           title,
@@ -208,7 +195,9 @@ export default function Admin() {
           `${API_BASE_URL}/admin/meditations/${created.id}/upload-audio`,
           {
             method: "POST",
-            headers: { "X-ADMIN-KEY": adminKey },
+            headers: {
+              Authorization: `Bearer ${getToken()}`,
+            },
             body: formData,
           }
         );
@@ -225,39 +214,21 @@ export default function Admin() {
     }
   };
 
-  // --- Unlock gate: show password form until key is submitted ---
-  if (!adminKeySubmitted) {
-    return (
-      <div className="p-6 max-w-md">
-        <h2 className="text-xl mb-4">Admin</h2>
-        <form onSubmit={handleUnlock}>
-          <label className="block text-sm text-gray-400 mb-1">Admin Key</label>
-          <input
-            type="password"
-            value={adminKey}
-            onChange={(e) => setAdminKey(e.target.value)}
-            placeholder="Enter admin key"
-            className="bg-gray-800 border border-gray-700 rounded p-2 w-full text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
-            autoFocus
-          />
-          {keyError && (
-            <p className="text-red-400 text-sm mt-1">{keyError}</p>
-          )}
-          <button
-            type="submit"
-            className="mt-3 px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white"
-          >
-            Continue
-          </button>
-        </form>
-      </div>
-    );
-  }
-
   // --- Main admin UI: "Add new meditation" form + list of existing meditations ---
   return (
     <div className="p-6 space-y-4">
-      <h2 className="text-xl">Admin Meditations</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl">Admin Meditations</h2>
+        <button
+          onClick={() => {
+            logout();
+            window.location.href = "/login";
+          }}
+          className="text-red-400"
+        >
+          Logout
+        </button>
+      </div>
 
       {/* Add new meditation: POST /admin/meditations/ then optional POST .../upload-audio for the new id */}
       <form
