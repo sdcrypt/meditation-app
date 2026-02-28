@@ -10,6 +10,8 @@ import Explore from "./pages/Explore";
 import Admin from "./pages/Admin";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Register from "./pages/Register";
+
 
 // export default function Home() {
 //   return (
@@ -42,6 +44,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/explore" element={<Explore />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={
               <ProtectedRoute>

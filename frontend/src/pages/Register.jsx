@@ -1,35 +1,26 @@
 import { useState } from "react";
 import { API_BASE_URL } from "../config";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
 
-export default function Login() {
+export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
-  const { login } = useAuth();
 
-  const handleLogin = async () => {
-    const res = await fetch(`${API_BASE_URL}/auth/login`, {
+  const handleRegister = async () => {
+    await fetch(`${API_BASE_URL}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
 
-    if (!res.ok) {
-      alert("Invalid credentials");
-      return;
-    }
-
-    const data = await res.json();
-    login(data.access_token);
-    navigate("/");
+    navigate("/login");
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white">
       <div className="bg-gray-900 p-6 rounded-xl space-y-4 w-80">
-        <h2 className="text-xl">Admin Login</h2>
+        <h2 className="text-xl">Register</h2>
 
         <input
           className="w-full p-2 bg-gray-800 rounded"
@@ -47,10 +38,10 @@ export default function Login() {
         />
 
         <button
-          onClick={handleLogin}
-          className="w-full bg-green-600 p-2 rounded"
+          onClick={handleRegister}
+          className="w-full bg-blue-600 p-2 rounded"
         >
-          Login
+          Register
         </button>
       </div>
     </div>

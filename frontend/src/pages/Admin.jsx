@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { API_BASE_URL } from "../config";
-import { getToken, logout } from "../auth";
+import { logout } from "../auth";
 
 /**
  * Admin page component. Displays all meditations with editable title/category/duration,
@@ -62,7 +62,7 @@ export default function Admin() {
     const res = await fetch(`${API_BASE_URL}/admin/meditations/${id}`, {
       method: "DELETE",
       headers: {
-        Authorization: `Bearer ${getToken()}`,
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
     });
     if (!res.ok) {
@@ -93,7 +93,7 @@ export default function Admin() {
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${getToken()}`,
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
           body: formData,
         }
@@ -120,7 +120,7 @@ export default function Admin() {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${getToken()}`,
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
       body: JSON.stringify({
         title: m.title,
@@ -172,7 +172,7 @@ export default function Admin() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify({
           title,
@@ -196,7 +196,7 @@ export default function Admin() {
           {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${getToken()}`,
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
             },
             body: formData,
           }
