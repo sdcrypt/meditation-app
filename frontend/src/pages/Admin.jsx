@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { API_BASE_URL } from "../config";
-import { logout } from "../auth";
+import { useAuth } from "../context/AuthContext";
 
 /**
  * Admin page component. Displays all meditations with editable title/category/duration,
@@ -16,6 +16,8 @@ import { logout } from "../auth";
  * @returns {JSX.Element} Admin dashboard UI
  */
 export default function Admin() {
+  const { logout } = useAuth();
+
   // --- Meditations list state ---
   /** List of meditations from GET /meditations; each has id, title, category, duration_sec, audio_url, etc. */
   const [meditations, setMeditations] = useState([]);

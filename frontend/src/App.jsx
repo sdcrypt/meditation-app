@@ -10,7 +10,7 @@ import Explore from "./pages/Explore";
 import Admin from "./pages/Admin";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
-import Register from "./pages/Register";
+import { useAuth } from "./context/AuthContext";
 
 
 // export default function Home() {
@@ -29,6 +29,8 @@ import Register from "./pages/Register";
  * @returns {JSX.Element} The app shell with router and routes
  */
 export default function App() {
+  const { user, isLoading } = useAuth();
+
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-gray-950 text-white">
@@ -39,12 +41,19 @@ export default function App() {
           <Link className="text-gray-200 hover:text-white" to="/explore">
             Explore
           </Link>
+          {!isLoading && (
+            <Link
+              className="text-gray-200 hover:text-white"
+              to={user?.is_admin ? "/admin" : "/login"}
+            >
+              {user?.is_admin ? "Admin" : "Admin Login"}
+            </Link>
+          )}
         </nav>
 
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/explore" element={<Explore />} />
-          <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={
               <ProtectedRoute>

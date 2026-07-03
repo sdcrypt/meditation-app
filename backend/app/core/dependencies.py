@@ -40,6 +40,6 @@ def get_current_user(
 
 
 def require_admin(user=Depends(get_current_user)):
-    if not user.get("is_admin"):
+    if not user.is_admin:
         raise HTTPException(status_code=403, detail="Admin only")
     return user
