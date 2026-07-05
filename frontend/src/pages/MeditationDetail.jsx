@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import MeditationArtwork from "../components/MeditationArtwork";
 import { formatDuration, meditationDescription } from "../components/MeditationCard";
-import { API_BASE_URL, DEVICE_ID } from "../config";
+import { API_BASE_URL } from "../config";
+import { usePlayer } from "../context/PlayerContext";
 
 const BackIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -15,7 +16,12 @@ export default function MeditationDetail() {
   const [meditation, setMeditation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const sessionId = useRef(null);
+  const {
+    currentMeditation,
+    isPlaying,
+    currentTime,
+    playMeditation,
+  } = usePlayer();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -35,35 +41,6 @@ export default function MeditationDetail() {
       });
     return () => controller.abort();
   }, [meditationId]);
-
-  const startSession = async () => {
-    if (sessionId.current) return;
-    sessionId.current = "pending";
-    try {
-      const response = await fetch(`${API_BASE_URL}/sessions/start`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          meditation_id: meditation.id,
-          device_id: Number(DEVICE_ID),
-        }),
-      });
-      if (!response.ok) throw new Error("Unable to start session");
-      const session = await response.json();
-      sessionId.current = session.id;
-    } catch {
-      sessionId.current = null;
-    }
-  };
-
-  const completeSession = async () => {
-    if (!Number.isInteger(sessionId.current)) return;
-    await fetch(`${API_BASE_URL}/sessions/${sessionId.current}/complete`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ seconds_listened: meditation.duration_sec }),
-    }).catch(() => {});
-  };
 
   if (loading) {
     return <main className="detail-page"><div className="detail-loading">Preparing your practice…</div></main>;
@@ -108,15 +85,22 @@ export default function MeditationDetail() {
 
             {meditation.audio_url ? (
               <div className="detail-player">
-                <div><span>Ready when you are</span><strong>Press play and settle in</strong></div>
-                <audio
-                  src={meditation.audio_url}
-                  controls
-                  preload="metadata"
-                  onPlay={startSession}
-                  onEnded={completeSession}
-                />
-                <small>A richer custom player is coming in the next build.</small>
+                <div>
+                  <span>{currentMeditation?.id === meditation.id && currentTime > 0 ? "Continue your practice" : "Ready when you are"}</span>
+                  <strong>
+                    {currentMeditation?.id === meditation.id && currentTime > 0
+                      ? `Resume from ${Math.floor(currentTime / 60)}:${String(Math.floor(currentTime % 60)).padStart(2, "0")}`
+                      : "Press play and settle in"}
+                  </strong>
+                </div>
+                <button
+                  className="detail-player__button"
+                  onClick={() => playMeditation(meditation)}
+                >
+                  <span>{currentMeditation?.id === meditation.id && isPlaying ? "Ⅱ" : "▶"}</span>
+                  {currentMeditation?.id === meditation.id && isPlaying ? "Pause meditation" : "Play meditation"}
+                </button>
+                <small>Your progress is saved automatically across pages.</small>
               </div>
             ) : (
               <div className="detail-player detail-player--unavailable">
