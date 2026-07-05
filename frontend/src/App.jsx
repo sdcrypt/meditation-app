@@ -7,6 +7,7 @@
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import Home from "./pages/Home";
 import Explore from "./pages/Explore";
+import MeditationDetail from "./pages/MeditationDetail";
 import Admin from "./pages/Admin";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -33,27 +34,34 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-gray-950 text-white">
-        <nav className="flex gap-4 p-4 border-b border-gray-800">
-          <Link className="text-gray-200 hover:text-white" to="/">
-            Home
-          </Link>
-          <Link className="text-gray-200 hover:text-white" to="/explore">
-            Explore
-          </Link>
-          {!isLoading && (
-            <Link
-              className="text-gray-200 hover:text-white"
-              to={user?.is_admin ? "/admin" : "/login"}
-            >
-              {user?.is_admin ? "Admin" : "Admin Login"}
+      <div className="app-shell">
+        <header className="site-header">
+          <div className="site-shell site-header__inner">
+            <Link className="brand" to="/" aria-label="Still home">
+              <span className="brand__mark"><i /><i /><i /></span>
+              <span>still.</span>
             </Link>
-          )}
-        </nav>
+            <nav className="site-nav" aria-label="Main navigation">
+              <a href="/#benefits">Meditate</a>
+              <a href="/#featured">Sleep</a>
+              <Link to="/explore">Explore</Link>
+              <a href="/#benefits">About</a>
+            </nav>
+            <div className="site-header__actions">
+              {!isLoading && (
+                <Link className="login-link" to={user?.is_admin ? "/admin" : "/login"}>
+                  {user?.is_admin ? "Admin" : "Log in"}
+                </Link>
+              )}
+              <Link className="header-cta" to="/explore">Get started</Link>
+            </div>
+          </div>
+        </header>
 
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/explore" element={<Explore />} />
+          <Route path="/meditations/:meditationId" element={<MeditationDetail />} />
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={
               <ProtectedRoute>
@@ -62,6 +70,16 @@ export default function App() {
               }
             />
         </Routes>
+        <footer className="site-footer">
+          <div className="site-shell site-footer__inner">
+            <Link className="brand brand--footer" to="/">
+              <span className="brand__mark"><i /><i /><i /></span><span>still.</span>
+            </Link>
+            <p>Mindfulness for real life.</p>
+            <div><a href="/#benefits">Meditate</a><a href="/#featured">Sleep</a><Link to="/explore">Explore</Link></div>
+            <small>© 2026 Still Mindful, Inc.</small>
+          </div>
+        </footer>
       </div>
     </BrowserRouter>
   );

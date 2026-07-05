@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
@@ -17,13 +17,39 @@ def get_db():
 
 
 @router.get("/", response_model=list[MeditationRead])
-def list_meditations(db: Session = Depends(get_db)):
-    return db.query(Meditation).filter(Meditation.is_published == True).all()
+def list_meditations(
+    category: str | None = Query(default=None, min_length=1, max_length=80),
+    featured: bool | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+):
+    query = db.query(Meditation).filter(Meditation.is_published.is_(True))
+
+    if category:
+        query = query.filter(Meditation.category.ilike(category.strip()))
+    if featured is not None:
+        query = query.filter(Meditation.is_featured.is_(featured))
+
+    return (
+        query.order_by(
+            Meditation.is_featured.desc(),
+            Meditation.created_at.desc(),
+            Meditation.id.desc(),
+        )
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
 
 @router.get("/{meditation_id}", response_model=MeditationRead)
 def get_meditation(meditation_id: int, db: Session = Depends(get_db)):
-    return db.query(Meditation).filter(
+    meditation = db.query(Meditation).filter(
         Meditation.id == meditation_id,
-        Meditation.is_published == True
+        Meditation.is_published.is_(True),
     ).first()
+
+    if meditation is None:
+        raise HTTPException(status_code=404, detail="Meditation not found")
+    return meditation

@@ -1,357 +1,451 @@
-/**
- * @file Admin.jsx
- * @description Admin page for the meditation app.
- * Flow: (1) Add new meditations via form (POST create + optional audio upload).
- * (2) List existing meditations with inline edit (PATCH), replace audio (POST upload-audio),
- * and delete (DELETE), all authorized via JWT in the Authorization header.
- */
-
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { API_BASE_URL } from "../config";
 import { useAuth } from "../context/AuthContext";
 
-/**
- * Admin page component. Displays all meditations with editable title/category/duration,
- * audio upload, and save/delete actions.
- * @returns {JSX.Element} Admin dashboard UI
- */
+const EMPTY_MEDITATION = {
+  title: "",
+  category: "",
+  duration_sec: "",
+  level: "beginner",
+  description: "",
+  teacher_name: "",
+  tags_text: "",
+  benefits_text: "",
+  is_featured: false,
+  is_published: true,
+};
+
+const withDraftFields = (meditation) => ({
+  ...meditation,
+  tags_text: (meditation.tags ?? []).join(", "),
+  benefits_text: (meditation.benefits ?? []).join("\n"),
+});
+
+const parseTags = (value) =>
+  value.split(",").map((item) => item.trim()).filter(Boolean);
+
+const parseBenefits = (value) =>
+  value.split("\n").map((item) => item.trim()).filter(Boolean);
+
+const getErrorMessage = (payload, fallback) => {
+  if (typeof payload?.detail === "string") return payload.detail;
+  if (Array.isArray(payload?.detail)) {
+    return payload.detail.map((item) => item.msg).join(", ");
+  }
+  return fallback;
+};
+
 export default function Admin() {
   const { logout } = useAuth();
-
-  // --- Meditations list state ---
-  /** List of meditations from GET /meditations; each has id, title, category, duration_sec, audio_url, etc. */
   const [meditations, setMeditations] = useState([]);
-
-  // --- Upload / create loading state ---
-  /** Id of the meditation currently uploading audio; used to show "Uploading…" and disable that row's file input. */
-  const [uploadingId, setUploadingId] = useState(null);
-  /** True while the "Add meditation" form is submitting (create + optional upload). */
-  const [creating, setCreating] = useState(false);
-
-  // --- "Add new meditation" form state ---
-  /** Draft fields for the new meditation (title, category, duration_sec, level). Reset after successful create. */
-  const [newMeditation, setNewMeditation] = useState({
-    title: "",
-    category: "",
-    duration_sec: "",
-    level: "beginner",
-  });
-  /** Selected audio file in the "Add new meditation" form; optional, cleared after create. */
+  const [newMeditation, setNewMeditation] = useState(EMPTY_MEDITATION);
   const [newAudioFile, setNewAudioFile] = useState(null);
+  const [newArtworkFile, setNewArtworkFile] = useState(null);
+  const [creating, setCreating] = useState(false);
+  const [savingId, setSavingId] = useState(null);
+  const [uploadingKey, setUploadingKey] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [pageError, setPageError] = useState("");
+  const [notice, setNotice] = useState("");
 
-  /**
-   * Fetches all meditations from the public API (GET /meditations) and updates local state.
-   * Used after create, update, delete, or upload so the list stays in sync.
-   */
-  const fetchMeditations = () => {
-    fetch(`${API_BASE_URL}/meditations`)
-      .then((res) => res.json())
-      .then(setMeditations);
-  };
-
-  /** On mount, fetch the meditation list once. */
-  useEffect(() => {
-    fetchMeditations();
+  const request = useCallback(async (path, options = {}) => {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+        ...options.headers,
+      },
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(getErrorMessage(payload, `Request failed: ${response.status}`));
+    }
+    return payload;
   }, []);
 
-  /**
-   * Deletes a meditation by id using the admin API (DELETE /admin/meditations/{id}).
-   * Sends JWT Authorization header. On success refetches the list; on error shows alert.
-   * @param {number|string} id - Meditation id to delete
-   * @returns {Promise<void>}
-   */
-  const deleteMeditation = async (id) => {
-    const res = await fetch(`${API_BASE_URL}/admin/meditations/${id}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      alert(err.detail ?? `Delete failed: ${res.status}`);
-      return;
-    }
-    fetchMeditations();
-  };
-
-  /**
-   * Uploads an audio file for a meditation (POST /admin/meditations/{id}/upload-audio).
-   * Uses multipart/form-data; do not set Content-Type so the browser adds the boundary.
-   * Sets uploadingId for loading UI; on success refetches list; on error shows alert.
-   * Replaces any existing audio_url for that meditation.
-   * @param {number|string} id - Meditation id
-   * @param {File} file - Audio file (e.g. from input type="file")
-   * @returns {Promise<void>}
-   */
-  const uploadAudio = async (id, file) => {
-    if (!file) return;
-    setUploadingId(id);
-    const formData = new FormData();
-    formData.append("file", file);
+  const fetchMeditations = useCallback(async () => {
+    setPageError("");
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/admin/meditations/${id}/upload-audio`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: formData,
-        }
-      );
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        alert(err.detail ?? `Upload failed: ${res.status}`);
-        return;
-      }
-      fetchMeditations();
+      const data = await request("/admin/meditations/");
+      setMeditations(data.map(withDraftFields));
+    } catch (error) {
+      setPageError(error.message);
     } finally {
-      setUploadingId(null);
+      setLoading(false);
     }
-  };
+  }, [request]);
 
-  /**
-   * Updates a meditation via PATCH /admin/meditations/{id}. Sends title, category, duration_sec.
-   * Uses JWT Authorization header. On success refetches the list; on error shows alert.
-   * @param {{ id: number|string, title: string, category: string, duration_sec: number|string }} m - Meditation with fields to save
-   * @returns {Promise<void>}
-   */
-  const updateMeditation = async (m) => {
-    const res = await fetch(`${API_BASE_URL}/admin/meditations/${m.id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: JSON.stringify({
-        title: m.title,
-        category: m.category,
-        duration_sec: Number(m.duration_sec),
-      }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      alert(err.detail ?? `Save failed: ${res.status}`);
-      return;
-    }
+  useEffect(() => {
     fetchMeditations();
-  };
+  }, [fetchMeditations]);
 
-  /**
-   * Updates a single field of one meditation in state without mutating. Used for inline edit inputs.
-   * @param {number|string} id - Meditation id to update
-   * @param {string} field - Field name (e.g. "title", "category", "duration_sec")
-   * @param {string|number} value - New value for that field
-   */
   const setMeditationField = (id, field, value) => {
-    setMeditations((prev) =>
-      prev.map((x) => (x.id === id ? { ...x, [field]: value } : x))
+    setMeditations((current) =>
+      current.map((item) => item.id === id ? { ...item, [field]: value } : item)
     );
   };
 
-  /**
-   * Creates a new meditation via POST, then optionally uploads audio for it.
-   * Flow: validate form → POST /admin/meditations/ (title, category, duration_sec, level) with JWT →
-   * if file selected, POST /admin/meditations/{id}/upload-audio with JWT → reset form and refetch list.
-   * This adds a new meditation (and new audio); it does not replace existing ones.
-   * @param {React.FormEvent} e - Form submit event
-   * @returns {Promise<void>}
-   */
-  const handleCreateMeditation = async (e) => {
-    e.preventDefault();
-    const title = newMeditation.title?.trim();
-    const category = newMeditation.category?.trim();
-    const duration_sec = Number(newMeditation.duration_sec);
-    const level = newMeditation.level?.trim() || "beginner";
-    if (!title || !category || Number.isNaN(duration_sec) || duration_sec < 0) {
-      alert("Please fill title, category, and a valid duration (sec).");
-      return;
-    }
-    setCreating(true);
+  const uploadFile = async (id, file, kind) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return request(`/admin/meditations/${id}/upload-${kind}`, {
+      method: "POST",
+      body: formData,
+    });
+  };
+
+  const uploadExistingFile = async (id, file, kind) => {
+    if (!file) return;
+    const key = `${kind}-${id}`;
+    setUploadingKey(key);
+    setNotice("");
     try {
-      const createRes = await fetch(`${API_BASE_URL}/admin/meditations/`, {
+      const updated = await uploadFile(id, file, kind);
+      setMeditations((current) =>
+        current.map((item) => item.id === id ? withDraftFields(updated) : item)
+      );
+      setNotice(`${kind === "artwork" ? "Artwork" : "Audio"} uploaded successfully.`);
+    } catch (error) {
+      setPageError(error.message);
+    } finally {
+      setUploadingKey(null);
+    }
+  };
+
+  const meditationPayload = (meditation) => ({
+    title: meditation.title.trim(),
+    category: meditation.category.trim(),
+    duration_sec: Number(meditation.duration_sec),
+    level: meditation.level.trim(),
+    description: meditation.description.trim(),
+    teacher_name: meditation.teacher_name.trim(),
+    tags: parseTags(meditation.tags_text),
+    benefits: parseBenefits(meditation.benefits_text),
+    is_featured: meditation.is_featured,
+    is_published: meditation.is_published,
+  });
+
+  const handleCreateMeditation = async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    setCreating(true);
+    setPageError("");
+    setNotice("");
+    try {
+      let created = await request("/admin/meditations/", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title,
-          category,
-          duration_sec,
-          level,
+          ...meditationPayload(newMeditation),
           audio_url: null,
+          artwork_url: null,
         }),
       });
-      if (!createRes.ok) {
-        const err = await createRes.json().catch(() => ({}));
-        alert(err.detail ?? `Create failed: ${createRes.status}`);
-        return;
+      if (newArtworkFile) {
+        created = await uploadFile(created.id, newArtworkFile, "artwork");
       }
-      const created = await createRes.json();
       if (newAudioFile) {
-        const formData = new FormData();
-        formData.append("file", newAudioFile);
-        const uploadRes = await fetch(
-          `${API_BASE_URL}/admin/meditations/${created.id}/upload-audio`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-            body: formData,
-          }
-        );
-        if (!uploadRes.ok) {
-          const err = await uploadRes.json().catch(() => ({}));
-          alert(err.detail ?? `Audio upload failed: ${uploadRes.status}`);
-        }
+        created = await uploadFile(created.id, newAudioFile, "audio");
       }
-      setNewMeditation({ title: "", category: "", duration_sec: "", level: "beginner" });
+      setMeditations((current) => [withDraftFields(created), ...current]);
+      setNewMeditation(EMPTY_MEDITATION);
       setNewAudioFile(null);
-      fetchMeditations();
+      setNewArtworkFile(null);
+      setNotice("Meditation created successfully.");
+      form.reset();
+    } catch (error) {
+      setPageError(error.message);
     } finally {
       setCreating(false);
     }
   };
 
-  // --- Main admin UI: "Add new meditation" form + list of existing meditations ---
+  const updateMeditation = async (meditation) => {
+    setSavingId(meditation.id);
+    setPageError("");
+    setNotice("");
+    try {
+      const updated = await request(`/admin/meditations/${meditation.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(meditationPayload(meditation)),
+      });
+      setMeditations((current) =>
+        current.map((item) =>
+          item.id === meditation.id ? withDraftFields(updated) : item
+        )
+      );
+      setNotice(`“${updated.title}” saved.`);
+    } catch (error) {
+      setPageError(error.message);
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const deleteMeditation = async (meditation) => {
+    if (!window.confirm(`Delete “${meditation.title}”? This cannot be undone.`)) return;
+    setPageError("");
+    try {
+      await request(`/admin/meditations/${meditation.id}`, { method: "DELETE" });
+      setMeditations((current) =>
+        current.filter((item) => item.id !== meditation.id)
+      );
+      setNotice("Meditation deleted.");
+    } catch (error) {
+      setPageError(error.message);
+    }
+  };
+
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl">Admin Meditations</h2>
-        <button
-          onClick={() => {
-            logout();
-            window.location.href = "/login";
-          }}
-          className="text-red-400"
-        >
-          Logout
-        </button>
+    <main className="admin-page">
+      <div className="admin-shell">
+        <header className="admin-heading">
+          <div>
+            <p className="admin-kicker">Content studio</p>
+            <h1>Meditation library</h1>
+            <p>Create, enrich, publish, and organize every practice.</p>
+          </div>
+          <button
+            className="admin-logout"
+            onClick={() => {
+              logout();
+              window.location.href = "/login";
+            }}
+          >
+            Log out
+          </button>
+        </header>
+
+        {(pageError || notice) && (
+          <div
+            className={`admin-alert ${pageError ? "admin-alert--error" : "admin-alert--success"}`}
+            role={pageError ? "alert" : "status"}
+          >
+            {pageError || notice}
+            <button onClick={() => { setPageError(""); setNotice(""); }} aria-label="Dismiss">×</button>
+          </div>
+        )}
+
+        <section className="admin-create">
+          <div className="admin-section-title">
+            <span>01</span>
+            <div><h2>Add a meditation</h2><p>Build the complete content entry before publishing.</p></div>
+          </div>
+          <form onSubmit={handleCreateMeditation}>
+            <div className="admin-form-grid">
+              <label className="admin-field admin-field--wide">
+                <span>Title</span>
+                <input required maxLength={200} value={newMeditation.title}
+                  onChange={(event) => setNewMeditation((item) => ({ ...item, title: event.target.value }))}
+                  placeholder="e.g. A Quiet Place Within" />
+              </label>
+              <label className="admin-field">
+                <span>Teacher</span>
+                <input maxLength={120} value={newMeditation.teacher_name}
+                  onChange={(event) => setNewMeditation((item) => ({ ...item, teacher_name: event.target.value }))}
+                  placeholder="Teacher name" />
+              </label>
+              <label className="admin-field">
+                <span>Category</span>
+                <input required maxLength={80} value={newMeditation.category}
+                  onChange={(event) => setNewMeditation((item) => ({ ...item, category: event.target.value }))}
+                  placeholder="Sleep, Stress, Focus…" />
+              </label>
+              <label className="admin-field">
+                <span>Duration in seconds</span>
+                <input required type="number" min="1" max="86400" value={newMeditation.duration_sec}
+                  onChange={(event) => setNewMeditation((item) => ({ ...item, duration_sec: event.target.value }))}
+                  placeholder="600" />
+              </label>
+              <label className="admin-field">
+                <span>Level</span>
+                <select value={newMeditation.level}
+                  onChange={(event) => setNewMeditation((item) => ({ ...item, level: event.target.value }))}>
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                  <option value="all levels">All levels</option>
+                </select>
+              </label>
+              <label className="admin-field admin-field--full">
+                <span>Description</span>
+                <textarea rows="4" maxLength={5000} value={newMeditation.description}
+                  onChange={(event) => setNewMeditation((item) => ({ ...item, description: event.target.value }))}
+                  placeholder="Describe what this meditation helps the listener experience…" />
+              </label>
+              <label className="admin-field admin-field--wide">
+                <span>Tags <small>comma separated</small></span>
+                <input value={newMeditation.tags_text}
+                  onChange={(event) => setNewMeditation((item) => ({ ...item, tags_text: event.target.value }))}
+                  placeholder="calm, breathwork, evening" />
+              </label>
+              <label className="admin-field admin-field--wide">
+                <span>Benefits <small>one per line</small></span>
+                <textarea rows="3" value={newMeditation.benefits_text}
+                  onChange={(event) => setNewMeditation((item) => ({ ...item, benefits_text: event.target.value }))}
+                  placeholder={"Reduces mental noise\nSupports deeper sleep"} />
+              </label>
+            </div>
+
+            <div className="admin-media-row">
+              <label className="admin-upload-card">
+                <strong>Artwork</strong>
+                <span>JPEG, PNG, WebP or AVIF · max 10 MB</span>
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/avif"
+                  onChange={(event) => setNewArtworkFile(event.target.files?.[0] ?? null)} />
+                <b>{newArtworkFile?.name || "Choose image"}</b>
+              </label>
+              <label className="admin-upload-card">
+                <strong>Audio</strong>
+                <span>Upload the guided meditation track</span>
+                <input type="file" accept="audio/*"
+                  onChange={(event) => setNewAudioFile(event.target.files?.[0] ?? null)} />
+                <b>{newAudioFile?.name || "Choose audio"}</b>
+              </label>
+              <div className="admin-publish-controls">
+                <label><input type="checkbox" checked={newMeditation.is_featured}
+                  onChange={(event) => setNewMeditation((item) => ({ ...item, is_featured: event.target.checked }))} />
+                  Feature this meditation</label>
+                <label><input type="checkbox" checked={newMeditation.is_published}
+                  onChange={(event) => setNewMeditation((item) => ({ ...item, is_published: event.target.checked }))} />
+                  Publish immediately</label>
+              </div>
+            </div>
+            <button className="admin-primary-button" type="submit" disabled={creating}>
+              {creating ? "Creating and uploading…" : "Create meditation"}
+            </button>
+          </form>
+        </section>
+
+        <section className="admin-library">
+          <div className="admin-section-title">
+            <span>02</span>
+            <div><h2>Existing meditations</h2><p>{meditations.length} items in your library</p></div>
+          </div>
+
+          {loading && <div className="admin-empty">Loading your library…</div>}
+          {!loading && meditations.length === 0 && (
+            <div className="admin-empty">No meditations yet. Create the first one above.</div>
+          )}
+
+          <div className="admin-card-list">
+            {meditations.map((meditation) => (
+              <article className="admin-card" key={meditation.id}>
+                <aside className="admin-card__media">
+                  {meditation.artwork_url ? (
+                    <img src={meditation.artwork_url} alt="" />
+                  ) : (
+                    <div className="admin-artwork-placeholder"><span>still.</span><small>No artwork</small></div>
+                  )}
+                  <label className="admin-file-button">
+                    {uploadingKey === `artwork-${meditation.id}` ? "Uploading…" : "Replace artwork"}
+                    <input type="file" accept="image/jpeg,image/png,image/webp,image/avif"
+                      disabled={Boolean(uploadingKey)}
+                      onChange={(event) => {
+                        uploadExistingFile(meditation.id, event.target.files?.[0], "artwork");
+                        event.target.value = "";
+                      }} />
+                  </label>
+                </aside>
+
+                <div className="admin-card__content">
+                  <div className="admin-card__topline">
+                    <div className="admin-statuses">
+                      <span className={meditation.is_published ? "is-live" : "is-draft"}>
+                        {meditation.is_published ? "Published" : "Draft"}
+                      </span>
+                      {meditation.is_featured && <span className="is-featured">Featured</span>}
+                    </div>
+                    <small>#{meditation.id} · {new Date(meditation.created_at).toLocaleDateString()}</small>
+                  </div>
+
+                  <div className="admin-form-grid admin-form-grid--edit">
+                    <label className="admin-field admin-field--wide">
+                      <span>Title</span>
+                      <input value={meditation.title}
+                        onChange={(event) => setMeditationField(meditation.id, "title", event.target.value)} />
+                    </label>
+                    <label className="admin-field">
+                      <span>Teacher</span>
+                      <input value={meditation.teacher_name}
+                        onChange={(event) => setMeditationField(meditation.id, "teacher_name", event.target.value)} />
+                    </label>
+                    <label className="admin-field">
+                      <span>Category</span>
+                      <input value={meditation.category}
+                        onChange={(event) => setMeditationField(meditation.id, "category", event.target.value)} />
+                    </label>
+                    <label className="admin-field">
+                      <span>Duration</span>
+                      <input type="number" min="1" max="86400" value={meditation.duration_sec}
+                        onChange={(event) => setMeditationField(meditation.id, "duration_sec", event.target.value)} />
+                    </label>
+                    <label className="admin-field">
+                      <span>Level</span>
+                      <select value={meditation.level}
+                        onChange={(event) => setMeditationField(meditation.id, "level", event.target.value)}>
+                        <option value="beginner">Beginner</option>
+                        <option value="intermediate">Intermediate</option>
+                        <option value="advanced">Advanced</option>
+                        <option value="all levels">All levels</option>
+                      </select>
+                    </label>
+                    <label className="admin-field admin-field--full">
+                      <span>Description</span>
+                      <textarea rows="3" maxLength={5000} value={meditation.description}
+                        onChange={(event) => setMeditationField(meditation.id, "description", event.target.value)} />
+                    </label>
+                    <label className="admin-field admin-field--wide">
+                      <span>Tags <small>comma separated</small></span>
+                      <input value={meditation.tags_text}
+                        onChange={(event) => setMeditationField(meditation.id, "tags_text", event.target.value)} />
+                    </label>
+                    <label className="admin-field admin-field--wide">
+                      <span>Benefits <small>one per line</small></span>
+                      <textarea rows="3" value={meditation.benefits_text}
+                        onChange={(event) => setMeditationField(meditation.id, "benefits_text", event.target.value)} />
+                    </label>
+                  </div>
+
+                  <div className="admin-card__bottom">
+                    <div className="admin-audio">
+                      {meditation.audio_url
+                        ? <audio src={meditation.audio_url} controls preload="none" />
+                        : <span>No audio uploaded</span>}
+                      <label className="admin-file-button admin-file-button--dark">
+                        {uploadingKey === `audio-${meditation.id}` ? "Uploading…" : "Replace audio"}
+                        <input type="file" accept="audio/*" disabled={Boolean(uploadingKey)}
+                          onChange={(event) => {
+                            uploadExistingFile(meditation.id, event.target.files?.[0], "audio");
+                            event.target.value = "";
+                          }} />
+                      </label>
+                    </div>
+                    <div className="admin-publish-controls admin-publish-controls--inline">
+                      <label><input type="checkbox" checked={meditation.is_featured}
+                        onChange={(event) => setMeditationField(meditation.id, "is_featured", event.target.checked)} />
+                        Featured</label>
+                      <label><input type="checkbox" checked={meditation.is_published}
+                        onChange={(event) => setMeditationField(meditation.id, "is_published", event.target.checked)} />
+                        Published</label>
+                    </div>
+                    <div className="admin-card__actions">
+                      <button className="admin-delete-button" type="button"
+                        onClick={() => deleteMeditation(meditation)}>Delete</button>
+                      <button className="admin-primary-button" type="button"
+                        disabled={savingId === meditation.id}
+                        onClick={() => updateMeditation(meditation)}>
+                        {savingId === meditation.id ? "Saving…" : "Save changes"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
       </div>
-
-      {/* Add new meditation: POST /admin/meditations/ then optional POST .../upload-audio for the new id */}
-      <form
-        onSubmit={handleCreateMeditation}
-        className="p-4 bg-gray-800 rounded space-y-2 border border-gray-700"
-      >
-        <h3 className="text-lg text-gray-200 mb-2">Add new meditation</h3>
-        <input
-          value={newMeditation.title}
-          onChange={(e) => setNewMeditation((p) => ({ ...p, title: e.target.value }))}
-          placeholder="Title"
-          className="bg-gray-900 border border-gray-700 p-2 w-full rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
-        />
-        <input
-          value={newMeditation.category}
-          onChange={(e) => setNewMeditation((p) => ({ ...p, category: e.target.value }))}
-          placeholder="Category"
-          className="bg-gray-900 border border-gray-700 p-2 w-full rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
-        />
-        <input
-          type="number"
-          value={newMeditation.duration_sec}
-          onChange={(e) => setNewMeditation((p) => ({ ...p, duration_sec: e.target.value }))}
-          placeholder="Duration (sec)"
-          min={0}
-          className="bg-gray-900 border border-gray-700 p-2 w-full rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
-        />
-        <input
-          value={newMeditation.level}
-          onChange={(e) => setNewMeditation((p) => ({ ...p, level: e.target.value }))}
-          placeholder="Level (e.g. beginner)"
-          className="bg-gray-900 border border-gray-700 p-2 w-full rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
-        />
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-400 shrink-0">Audio (optional):</label>
-          <input
-            type="file"
-            accept="audio/*"
-            onChange={(e) => setNewAudioFile(e.target.files?.[0] ?? null)}
-            className="text-sm text-gray-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-green-600 file:text-white file:text-sm"
-          />
-          {newAudioFile && (
-            <span className="text-sm text-gray-400">{newAudioFile.name}</span>
-          )}
-        </div>
-        <button
-          type="submit"
-          disabled={creating}
-          className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 rounded text-white"
-        >
-          {creating ? "Creating…" : "Add meditation"}
-        </button>
-      </form>
-
-      {/* Existing meditations: inline edit (PATCH), replace audio (POST upload-audio), delete (DELETE) */}
-      <h3 className="text-lg text-gray-300">Existing meditations</h3>
-      {meditations.length === 0 && (
-        <p className="text-gray-400">No meditations yet.</p>
-      )}
-
-      {meditations.map((m) => (
-        <div key={m.id} className="p-4 bg-gray-900 rounded space-y-2">
-          <input
-            value={m.title ?? ""}
-            onChange={(e) => setMeditationField(m.id, "title", e.target.value)}
-            placeholder="Title"
-            className="bg-gray-800 border border-gray-700 p-2 w-full rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
-          />
-          <input
-            value={m.category ?? ""}
-            onChange={(e) => setMeditationField(m.id, "category", e.target.value)}
-            placeholder="Category"
-            className="bg-gray-800 border border-gray-700 p-2 w-full rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
-          />
-          <input
-            type="number"
-            value={m.duration_sec ?? ""}
-            onChange={(e) => setMeditationField(m.id, "duration_sec", e.target.value)}
-            placeholder="Duration (sec)"
-            min={0}
-            className="bg-gray-800 border border-gray-700 p-2 w-full rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
-          />
-
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-400 shrink-0">Audio:</label>
-            <input
-              type="file"
-              accept="audio/*"
-              disabled={uploadingId === m.id}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) uploadAudio(m.id, file);
-                e.target.value = "";
-              }}
-              className="text-sm text-gray-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-green-600 file:text-white file:text-sm"
-            />
-            {uploadingId === m.id && (
-              <span className="text-sm text-gray-400">Uploading…</span>
-            )}
-          </div>
-
-          {m.audio_url && (
-            <audio src={m.audio_url} controls className="w-full" />
-          )}
-
-          <div className="flex gap-2 pt-1">
-            <button
-              onClick={() => updateMeditation(m)}
-              className="px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded text-white text-sm"
-            >
-              Save
-            </button>
-            <button
-              onClick={() => deleteMeditation(m.id)}
-              className="px-3 py-1.5 bg-red-600/80 hover:bg-red-600 rounded text-white text-sm"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
+    </main>
   );
 }
