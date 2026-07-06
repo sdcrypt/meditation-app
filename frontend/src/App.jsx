@@ -13,8 +13,10 @@ import Admin from "./pages/Admin";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PersistentPlayer from "./components/PersistentPlayer";
+import OnboardingModal from "./components/OnboardingModal";
 import { useAuth } from "./context/AuthContext";
 import { PlayerProvider } from "./context/PlayerContext";
+import { PreferencesProvider } from "./context/PreferencesContext";
 
 
 // export default function Home() {
@@ -37,8 +39,9 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <PlayerProvider>
-        <div className="app-shell">
+      <PreferencesProvider>
+        <PlayerProvider>
+          <div className="app-shell">
           <header className="site-header">
             <div className="site-shell site-header__inner">
               <Link className="brand" to="/" aria-label="Still home">
@@ -86,9 +89,11 @@ export default function App() {
               <small>© 2026 Still Mindful, Inc.</small>
             </div>
           </footer>
-          <PersistentPlayer />
-        </div>
-      </PlayerProvider>
+            <PersistentPlayer />
+            <OnboardingModal />
+          </div>
+        </PlayerProvider>
+      </PreferencesProvider>
     </BrowserRouter>
   );
 }

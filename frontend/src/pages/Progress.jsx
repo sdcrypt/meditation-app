@@ -21,6 +21,11 @@ const formatActivityDate = (value) =>
     year: "numeric",
   }).format(new Date(value));
 
+const TIMEZONE_ALIASES = {
+  "Asia/Calcutta": "Asia/Kolkata",
+  "Asia/Katmandu": "Asia/Kathmandu",
+};
+
 export default function Progress() {
   const [summary, setSummary] = useState(null);
   const [history, setHistory] = useState([]);
@@ -31,7 +36,10 @@ export default function Progress() {
   const [error, setError] = useState("");
 
   const timezone = useMemo(
-    () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+    () => {
+      const detected = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+      return TIMEZONE_ALIASES[detected] || detected;
+    },
     []
   );
 

@@ -22,6 +22,16 @@ from app.schemas.session import (
 
 router = APIRouter()
 MINIMUM_STREAK_SECONDS = 60
+TIMEZONE_ALIASES = {
+    # Browsers and older operating systems may still return these valid legacy
+    # IANA identifiers even when the container only ships their canonical name.
+    "Asia/Calcutta": "Asia/Kolkata",
+    "Asia/Katmandu": "Asia/Kathmandu",
+    "US/Eastern": "America/New_York",
+    "US/Central": "America/Chicago",
+    "US/Mountain": "America/Denver",
+    "US/Pacific": "America/Los_Angeles",
+}
 
 
 def get_db():
@@ -81,8 +91,9 @@ def apply_progress(
 
 
 def parse_timezone(timezone_name: str) -> ZoneInfo:
+    canonical_name = TIMEZONE_ALIASES.get(timezone_name, timezone_name)
     try:
-        return ZoneInfo(timezone_name)
+        return ZoneInfo(canonical_name)
     except ZoneInfoNotFoundError as error:
         raise HTTPException(status_code=400, detail="Invalid timezone") from error
 
@@ -204,7 +215,7 @@ def progress_summary(
     completed_sessions = sum(item.completed_at is not None for item in sessions)
     session_ids = [item.id for item in sessions]
     activity_by_date: dict[date, int] = defaultdict(int)
-    sessions_with_activity: set[int] = set()
+    activity_seconds_by_session: dict[int, int] = defaultdict(int)
 
     if session_ids:
         activities = db.query(MeditationSessionActivity).filter(
@@ -213,21 +224,24 @@ def progress_summary(
         for activity in activities:
             activity_date = as_local_date(activity.recorded_at, timezone)
             activity_by_date[activity_date] += activity.seconds_listened
-            sessions_with_activity.add(activity.session_id)
+            activity_seconds_by_session[activity.session_id] += activity.seconds_listened
 
-    # Sessions created before activity-event tracking retain their historical
-    # mindful time and are assigned to their best available timestamp.
+    # Sessions that began before event tracking may have only part of their
+    # mindful time represented by activity rows. Reconcile the residual once.
     for meditation_session in sessions:
-        if meditation_session.id in sessions_with_activity:
+        residual_seconds = max(
+            0,
+            meditation_session.seconds_listened
+            - activity_seconds_by_session[meditation_session.id],
+        )
+        if residual_seconds == 0:
             continue
         fallback_timestamp = (
             meditation_session.completed_at
             or meditation_session.last_listened_at
             or meditation_session.started_at
         )
-        activity_by_date[as_local_date(fallback_timestamp, timezone)] += (
-            meditation_session.seconds_listened
-        )
+        activity_by_date[as_local_date(fallback_timestamp, timezone)] += residual_seconds
 
     completed_dates = {
         as_local_date(item.completed_at, timezone)

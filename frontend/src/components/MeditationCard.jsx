@@ -16,7 +16,7 @@ const ArrowIcon = () => (
   </svg>
 );
 
-export default function MeditationCard({ meditation, featured = false }) {
+export default function MeditationCard({ meditation, featured = false, reason = "" }) {
   const visibleTags = (meditation.tags ?? []).slice(0, featured ? 4 : 3);
   const firstBenefit = meditation.benefits?.[0];
 
@@ -35,6 +35,7 @@ export default function MeditationCard({ meditation, featured = false }) {
         </span>
       </MeditationArtwork>
       <div className="library-card__body">
+        {reason && <span className="library-card__match">✦ {reason}</span>}
         <p className="library-card__teacher">
           {meditation.teacher_name || "Still guide"}
         </p>

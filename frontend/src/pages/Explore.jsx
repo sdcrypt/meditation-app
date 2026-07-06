@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import MeditationCard from "../components/MeditationCard";
-import { API_BASE_URL } from "../config";
+import { API_BASE_URL, DEVICE_ID } from "../config";
+import { usePreferences } from "../context/PreferencesContext";
+import {
+  DURATION_OPTIONS,
+  GOAL_OPTIONS,
+  rankMeditations,
+} from "../utils/personalization";
 
 const SearchIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -24,6 +30,17 @@ export default function Explore() {
   const [level, setLevel] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [history, setHistory] = useState([]);
+  const {
+    preferences,
+    hasPreferences,
+    shouldPrompt,
+    openOnboarding,
+  } = usePreferences();
+
+  useEffect(() => {
+    if (shouldPrompt) openOnboarding();
+  }, [openOnboarding, shouldPrompt]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -42,6 +59,19 @@ export default function Explore() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${API_BASE_URL}/sessions/history/${DEVICE_ID}?limit=50`, {
+      signal: controller.signal,
+    })
+      .then((response) => response.ok ? response.json() : { items: [] })
+      .then((data) => setHistory(data.items ?? []))
+      .catch((requestError) => {
+        if (requestError.name !== "AbortError") setHistory([]);
+      });
+    return () => controller.abort();
+  }, []);
+
   const categories = useMemo(
     () => [...new Set(meditations.map((item) => item.category))].sort(),
     [meditations]
@@ -51,6 +81,22 @@ export default function Explore() {
     () => meditations.filter((item) => item.is_featured).slice(0, 3),
     [meditations]
   );
+
+  const personalizedMeditations = useMemo(
+    () => rankMeditations(meditations, preferences, history).slice(0, 3),
+    [history, meditations, preferences]
+  );
+
+  const preferenceLabels = useMemo(() => {
+    if (!preferences) return [];
+    const goals = GOAL_OPTIONS
+      .filter((item) => preferences.goals?.includes(item.id))
+      .map((item) => item.label);
+    const durationPreference = DURATION_OPTIONS.find(
+      (item) => item.id === preferences.duration
+    );
+    return [...goals.slice(0, 2), durationPreference?.label].filter(Boolean);
+  }, [preferences]);
 
   const filteredMeditations = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -106,10 +152,46 @@ export default function Explore() {
             />
             {query && <button onClick={() => setQuery("")} aria-label="Clear search">×</button>}
           </label>
+          <button className="explore-personalize-button" onClick={openOnboarding}>
+            <span>✦</span> {hasPreferences ? "Edit my preferences" : "Personalize my library"}
+          </button>
         </div>
       </section>
 
       <div className="explore-content site-shell">
+        {hasPreferences && personalizedMeditations.length > 0 && !hasFilters && (
+          <section className="explore-personalized">
+            <div className="explore-section-heading">
+              <div>
+                <p className="eyebrow">Made personal</p>
+                <h2>For You</h2>
+                <div className="preference-chips">
+                  {preferenceLabels.map((label) => <span key={label}>{label}</span>)}
+                  <button onClick={openOnboarding}>Adjust</button>
+                </div>
+              </div>
+              <p>Selected from your intentions, preferred rhythm, and listening history.</p>
+            </div>
+            <div className="featured-library-grid">
+              {personalizedMeditations.map((meditation) => (
+                <MeditationCard
+                  key={meditation.id}
+                  meditation={meditation}
+                  featured
+                  reason={meditation.recommendationReason}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {!hasPreferences && !shouldPrompt && !hasFilters && (
+          <section className="personalization-invite">
+            <div><span>✦</span><div><strong>Make this library yours</strong><p>Answer four quick questions for more relevant practices.</p></div></div>
+            <button onClick={openOnboarding}>Personalize</button>
+          </section>
+        )}
+
         {featuredMeditations.length > 0 && !hasFilters && (
           <section className="explore-featured">
             <div className="explore-section-heading">
