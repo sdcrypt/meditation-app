@@ -27,14 +27,22 @@ def get_current_user(
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email = payload.get("sub")
-    except:
+        subject = payload.get("sub")
+        if not subject:
+            raise ValueError("Missing subject")
+    except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    user = db.query(User).filter(User.email == email).first()
+    if str(subject).isdigit():
+        user = db.query(User).filter(User.id == int(subject)).first()
+    else:
+        # Compatibility for administrator tokens issued before user accounts.
+        user = db.query(User).filter(User.email == subject).first()
 
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account is disabled")
 
     return user
 

@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     # Optional Admin API Key
     ADMIN_API_KEY: str = "dev-secret"
 
+    # Authentication
+    JWT_SECRET_KEY: str = "development-only-change-me"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+
     # Logging
     LOG_LEVEL: str = "INFO"
 

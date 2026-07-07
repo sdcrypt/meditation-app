@@ -28,9 +28,6 @@ export function AuthProvider({ children }) {
         return res.json();
       })
       .then((authenticatedUser) => {
-        if (!authenticatedUser.is_admin) {
-          throw new Error("Admin access required");
-        }
         setUser(authenticatedUser);
       })
       .catch((error) => {
@@ -63,10 +60,6 @@ export function AuthProvider({ children }) {
       }
 
       const authenticatedUser = await res.json();
-      if (!authenticatedUser.is_admin) {
-        throw new Error("This account does not have admin access");
-      }
-
       setUser(authenticatedUser);
       return authenticatedUser;
     } catch (error) {

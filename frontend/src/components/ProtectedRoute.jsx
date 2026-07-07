@@ -20,7 +20,7 @@ function ProtectedRoute({ children }) {
   if (!user.is_admin) {
     return (
       <Navigate
-        to="/login"
+        to="/account"
         replace
         state={{ error: "This account does not have admin access." }}
       />

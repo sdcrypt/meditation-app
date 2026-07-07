@@ -11,7 +11,9 @@ import MeditationDetail from "./pages/MeditationDetail";
 import Progress from "./pages/Progress";
 import Admin from "./pages/Admin";
 import Login from "./pages/Login";
+import Account from "./pages/Account";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AuthenticatedRoute from "./components/AuthenticatedRoute";
 import PersistentPlayer from "./components/PersistentPlayer";
 import OnboardingModal from "./components/OnboardingModal";
 import { useAuth } from "./context/AuthContext";
@@ -35,7 +37,7 @@ import { PreferencesProvider } from "./context/PreferencesContext";
  * @returns {JSX.Element} The app shell with router and routes
  */
 export default function App() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, logout } = useAuth();
 
   return (
     <BrowserRouter>
@@ -57,9 +59,24 @@ export default function App() {
               </nav>
               <div className="site-header__actions">
                 {!isLoading && (
-                  <Link className="login-link" to={user?.is_admin ? "/admin" : "/login"}>
-                    {user?.is_admin ? "Admin" : "Log in"}
-                  </Link>
+                  user ? (
+                    <>
+                      <Link className="login-link" to={user.is_admin ? "/admin" : "/account"}>
+                        {user.is_admin ? "Admin" : "Account"}
+                      </Link>
+                      <button
+                        className="header-logout"
+                        onClick={() => {
+                          logout();
+                          window.location.href = "/";
+                        }}
+                      >
+                        Log out
+                      </button>
+                    </>
+                  ) : (
+                    <Link className="login-link" to="/login">Log in</Link>
+                  )
                 )}
                 <Link className="header-cta" to="/explore">Get started</Link>
               </div>
@@ -72,6 +89,11 @@ export default function App() {
             <Route path="/meditations/:meditationId" element={<MeditationDetail />} />
             <Route path="/progress" element={<Progress />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/account" element={
+              <AuthenticatedRoute>
+                <Account />
+              </AuthenticatedRoute>
+            } />
             <Route path="/admin" element={
                 <ProtectedRoute>
                   <Admin />
