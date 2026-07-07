@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import MeditationArtwork from "../components/MeditationArtwork";
 import { formatDuration, meditationDescription } from "../components/MeditationCard";
 import { API_BASE_URL } from "../config";
+import { useFavorites } from "../context/FavoritesContext";
 import { usePlayer } from "../context/PlayerContext";
 
 const BackIcon = () => (
@@ -22,6 +23,7 @@ export default function MeditationDetail() {
     currentTime,
     playMeditation,
   } = usePlayer();
+  const { isFavorite, toggleFavorite } = useFavorites();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -76,6 +78,15 @@ export default function MeditationDetail() {
             <h1>{meditation.title}</h1>
             <p className="detail-teacher">Guided by <strong>{meditation.teacher_name || "Still guide"}</strong></p>
             <p className="detail-description">{meditationDescription(meditation)}</p>
+            <button
+              className={`detail-favorite ${isFavorite(meditation.id) ? "is-saved" : ""}`}
+              onClick={async () => {
+                const result = await toggleFavorite(meditation);
+                if (result?.requiresLogin) window.location.href = "/login";
+              }}
+            >
+              {isFavorite(meditation.id) ? "♥ Saved meditation" : "♡ Save meditation"}
+            </button>
 
             <div className="detail-meta">
               <div><span>Duration</span><strong>{formatDuration(meditation.duration_sec)}</strong></div>

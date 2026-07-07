@@ -17,6 +17,7 @@ import AuthenticatedRoute from "./components/AuthenticatedRoute";
 import PersistentPlayer from "./components/PersistentPlayer";
 import OnboardingModal from "./components/OnboardingModal";
 import { useAuth } from "./context/AuthContext";
+import { FavoritesProvider } from "./context/FavoritesContext";
 import { PlayerProvider } from "./context/PlayerContext";
 import { PreferencesProvider } from "./context/PreferencesContext";
 
@@ -42,7 +43,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <PreferencesProvider>
-        <PlayerProvider>
+        <FavoritesProvider>
+          <PlayerProvider>
           <div className="app-shell">
           <header className="site-header">
             <div className="site-shell site-header__inner">
@@ -114,7 +116,8 @@ export default function App() {
             <PersistentPlayer />
             <OnboardingModal />
           </div>
-        </PlayerProvider>
+          </PlayerProvider>
+        </FavoritesProvider>
       </PreferencesProvider>
     </BrowserRouter>
   );

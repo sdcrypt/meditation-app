@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import MeditationArtwork from "./MeditationArtwork";
+import { useFavorites } from "../context/FavoritesContext";
 
 export const formatDuration = (seconds) => {
   const minutes = Math.max(1, Math.round(seconds / 60));
@@ -17,8 +18,19 @@ const ArrowIcon = () => (
 );
 
 export default function MeditationCard({ meditation, featured = false, reason = "" }) {
+  const { isFavorite, toggleFavorite } = useFavorites();
   const visibleTags = (meditation.tags ?? []).slice(0, featured ? 4 : 3);
   const firstBenefit = meditation.benefits?.[0];
+  const saved = isFavorite(meditation.id);
+
+  const handleFavoriteClick = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const result = await toggleFavorite(meditation);
+    if (result?.requiresLogin) {
+      window.location.href = "/login";
+    }
+  };
 
   return (
     <Link
@@ -30,6 +42,14 @@ export default function MeditationCard({ meditation, featured = false, reason = 
           <span>{meditation.category}</span>
           <span>{formatDuration(meditation.duration_sec)}</span>
         </div>
+        <button
+          className={`library-card__favorite ${saved ? "is-saved" : ""}`}
+          onClick={handleFavoriteClick}
+          aria-label={saved ? "Remove from saved meditations" : "Save meditation"}
+          title={saved ? "Saved" : "Save"}
+        >
+          {saved ? "♥" : "♡"}
+        </button>
         <span className="library-card__play" aria-hidden="true">
           <i />
         </span>
