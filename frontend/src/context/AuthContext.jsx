@@ -8,19 +8,12 @@ export function AuthProvider({ children }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
+    localStorage.removeItem("token");
 
     const controller = new AbortController();
 
     fetch(`${API_BASE_URL}/auth/me`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      credentials: "include",
       signal: controller.signal,
     })
       .then((res) => {
@@ -45,14 +38,10 @@ export function AuthProvider({ children }) {
     return () => controller.abort();
   }, []);
 
-  const login = async (token) => {
-    localStorage.setItem("token", token);
-
+  const login = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/auth/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
       });
 
       if (!res.ok) {
@@ -63,14 +52,21 @@ export function AuthProvider({ children }) {
       setUser(authenticatedUser);
       return authenticatedUser;
     } catch (error) {
-      localStorage.removeItem("token");
       setUser(null);
       throw error;
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
     localStorage.removeItem("token");
+    try {
+      await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // Local logout still clears UI state if the network is unavailable.
+    }
     setUser(null);
   };
 

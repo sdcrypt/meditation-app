@@ -44,6 +44,7 @@ export default function Login() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ email, password }),
         }
       );
@@ -57,7 +58,7 @@ export default function Login() {
         );
       }
 
-      const authenticatedUser = await login(data.access_token);
+      const authenticatedUser = await login();
       const requestedPath = location.state?.from?.pathname;
       const destination = authenticatedUser.is_admin
         ? requestedPath || "/admin"

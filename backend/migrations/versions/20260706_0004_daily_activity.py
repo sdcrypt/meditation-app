@@ -18,6 +18,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    """Add daily listening records used for progress and streaks."""
     op.add_column(
         "meditation_sessions",
         sa.Column("last_listened_at", sa.DateTime(timezone=True), nullable=True),
@@ -49,6 +50,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Remove daily listening records and the last-listened timestamp."""
     op.drop_index(
         "ix_meditation_session_activity_session_id",
         table_name="meditation_session_activity",

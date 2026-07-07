@@ -22,6 +22,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    """Create the original tables when they do not already exist."""
     bind = op.get_bind()
     existing_tables = set(sa.inspect(bind).get_table_names())
 
@@ -70,6 +71,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Remove the original application tables."""
     op.drop_table("meditation_sessions")
     op.drop_index("ix_meditations_id", table_name="meditations")
     op.drop_table("meditations")

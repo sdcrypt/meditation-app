@@ -5,6 +5,7 @@ from app.db.base import Base
 
 
 class Meditation(Base):
+    """A meditation that can be shown, played, and managed in the app."""
     __tablename__ = "meditations"
 
     id = Column(Integer, primary_key=True, index=True)

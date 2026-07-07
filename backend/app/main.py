@@ -7,6 +7,7 @@ from app.core.logging import setup_logging
 
 
 def create_app() -> FastAPI:
+    """Build and configure the FastAPI application."""
     setup_logging()
     app = FastAPI(
         title="Meditation App API",

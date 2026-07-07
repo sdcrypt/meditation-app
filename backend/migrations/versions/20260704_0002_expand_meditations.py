@@ -18,6 +18,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    """Add richer meditation details for discovery and display."""
     op.add_column(
         "meditations",
         sa.Column("description", sa.Text(), server_default="", nullable=False),
@@ -76,6 +77,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Remove the meditation discovery fields added by this migration."""
     op.alter_column(
         "meditations",
         "is_published",

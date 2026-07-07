@@ -4,21 +4,25 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class SessionStart(BaseModel):
+    """Information needed to start listening on one device."""
     meditation_id: int = Field(gt=0)
     device_id: int = Field(gt=0)
 
 
 class SessionProgress(BaseModel):
+    """Current listening position and mindful time for a session."""
     device_id: int = Field(gt=0)
     position_sec: int = Field(ge=0)
     seconds_listened: int = Field(ge=0)
 
 
 class SessionComplete(SessionProgress):
+    """Final progress sent when a meditation has finished playing."""
     pass
 
 
 class SessionRead(BaseModel):
+    """Listening session details returned to the frontend."""
     id: int
     meditation_id: int
     device_id: int
@@ -32,6 +36,7 @@ class SessionRead(BaseModel):
 
 
 class DailyActivity(BaseModel):
+    """Mindful time recorded for one calendar day."""
     date: date
     day_label: str
     mindful_seconds: int
@@ -40,6 +45,7 @@ class DailyActivity(BaseModel):
 
 
 class ProgressSummary(BaseModel):
+    """Overall progress, streaks, and recent activity for a device."""
     mindful_seconds: int
     mindful_minutes: int
     total_sessions: int
@@ -52,6 +58,7 @@ class ProgressSummary(BaseModel):
 
 
 class SessionHistoryItem(BaseModel):
+    """One row in the user's listening history."""
     id: int
     meditation_id: int
     title: str
@@ -69,6 +76,7 @@ class SessionHistoryItem(BaseModel):
 
 
 class SessionHistoryResponse(BaseModel):
+    """A paginated list of listening history rows."""
     items: list[SessionHistoryItem]
     total: int
     limit: int

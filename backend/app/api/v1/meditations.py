@@ -9,6 +9,7 @@ router = APIRouter()
 
 
 def get_db():
+    """Open a database session for this request and close it afterward."""
     db = SessionLocal()
     try:
         yield db
@@ -24,6 +25,7 @@ def list_meditations(
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ):
+    """Return published meditations for the Explore page."""
     query = db.query(Meditation).filter(Meditation.is_published.is_(True))
 
     if category:
@@ -45,6 +47,7 @@ def list_meditations(
 
 @router.get("/{meditation_id}", response_model=MeditationRead)
 def get_meditation(meditation_id: int, db: Session = Depends(get_db)):
+    """Return one published meditation by its id."""
     meditation = db.query(Meditation).filter(
         Meditation.id == meditation_id,
         Meditation.is_published.is_(True),

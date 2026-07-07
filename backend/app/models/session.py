@@ -4,6 +4,7 @@ from app.db.base import Base
 
 
 class MeditationSession(Base):
+    """One listening attempt for a meditation on a specific device."""
     __tablename__ = "meditation_sessions"
 
     id = Column(Integer, primary_key=True)
@@ -27,6 +28,7 @@ class MeditationSession(Base):
 
 
 class MeditationSessionActivity(Base):
+    """A small record of listening time used to build daily progress."""
     __tablename__ = "meditation_session_activity"
 
     id = Column(Integer, primary_key=True)

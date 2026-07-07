@@ -18,6 +18,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    """Add account status and creation time fields to users."""
     op.alter_column(
         "users",
         "is_admin",
@@ -46,6 +47,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Remove the user account fields added by this migration."""
     op.drop_column("users", "created_at")
     op.drop_column("users", "is_active")
     op.alter_column(

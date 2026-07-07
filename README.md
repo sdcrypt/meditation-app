@@ -69,7 +69,7 @@ FastAPI application
 - PostgreSQL 15
 - Alembic migrations
 - Pydantic request and response validation
-- JWT bearer authentication for normal users and administrators
+- HTTP-only cookie authentication backed by JWTs for normal users and administrators
 - Boto3 for S3 uploads
 
 ## Feature overview
@@ -248,7 +248,10 @@ The backend reads `backend/.env` through Pydantic settings.
 | `AWS_S3_BUCKET` | Media bucket name | Empty |
 | `ADMIN_API_KEY` | Legacy optional admin key setting | `dev-secret` |
 | `JWT_SECRET_KEY` | JWT signing secret | Development-only fallback |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Bearer-token lifetime | `60` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Auth-cookie/JWT lifetime | `60` |
+| `AUTH_COOKIE_NAME` | Browser session cookie name | `still_session` |
+| `AUTH_COOKIE_SECURE` | Require HTTPS-only cookies | `False` |
+| `AUTH_COOKIE_SAMESITE` | Cookie SameSite policy | `lax` |
 | `LOG_LEVEL` | Backend logging level | `INFO` |
 
 The `.env` file and local virtual environments are excluded from Docker image
@@ -459,10 +462,11 @@ Preferences can be changed from the Explore hero or the “For You” section.
 | `still_meditation_progress` | Local playback positions |
 | `still_player_volume` | Volume preference |
 | `still_player_speed` | Playback-speed preference |
-| `token` | User or administrator JWT |
 
 Preferences survive browser restarts but do not synchronize across browsers or
-devices. Clearing browser storage removes them.
+devices. Auth sessions are stored in an HTTP-only cookie and are not readable
+from frontend JavaScript. Clearing browser storage removes local preferences and
+anonymous progress state, but logging out is handled through `/auth/logout`.
 
 ## API reference
 
@@ -505,17 +509,20 @@ Progress summary accepts a `timezone` query parameter:
 GET /api/v1/sessions/progress/123456?timezone=Asia%2FKolkata
 ```
 
-### Administrator authentication
+### User and administrator authentication
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
-| `POST` | `/auth/register` | Register a normal user and obtain a JWT |
-| `POST` | `/auth/login` | Log in a normal user or administrator |
-| `GET` | `/auth/me` | Validate a JWT and return account details |
+| `POST` | `/auth/register` | Register a normal user and set an HTTP-only auth cookie |
+| `POST` | `/auth/login` | Log in a normal user or administrator and set an HTTP-only auth cookie |
+| `GET` | `/auth/me` | Validate the current cookie session and return account details |
+| `POST` | `/auth/logout` | Clear the auth cookie |
 
 ### Protected meditation administration
 
-All routes require `Authorization: Bearer <token>`.
+Browser requests use the HTTP-only auth cookie. The backend still accepts
+`Authorization: Bearer <token>` for direct API compatibility, but the React app
+does not store JWTs in `localStorage`.
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
@@ -648,8 +655,8 @@ Before production deployment:
 
 1. Make `JWT_SECRET_KEY` required instead of using a development fallback,
    and rotate it for each environment.
-2. Replace bearer tokens in `localStorage` with a more secure
-   authentication strategy, preferably secure HTTP-only cookies.
+2. Enable `AUTH_COOKIE_SECURE=true` in HTTPS environments and add CSRF
+   protection if cross-site cookie flows are introduced.
 3. Pin and audit all backend dependency versions.
 4. Move the frontend API base URL into Vite environment configuration.
 5. Add password reset, email verification, and account recovery.

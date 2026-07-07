@@ -66,8 +66,8 @@ export default function App() {
                       </Link>
                       <button
                         className="header-logout"
-                        onClick={() => {
-                          logout();
+                        onClick={async () => {
+                          await logout();
                           window.location.href = "/";
                         }}
                       >

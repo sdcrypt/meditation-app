@@ -18,6 +18,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    """Add fields needed to resume audio from the last position."""
     op.alter_column(
         "meditation_sessions",
         "seconds_listened",
@@ -37,6 +38,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Remove the playback resume field and restore the old nullable setting."""
     op.drop_column("meditation_sessions", "last_position_sec")
     op.alter_column(
         "meditation_sessions",

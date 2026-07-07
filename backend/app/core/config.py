@@ -3,6 +3,7 @@ from typing import List
 
 
 class Settings(BaseSettings):
+    """Load application settings from environment variables."""
     # App
     PROJECT_NAME: str = "Meditation App API"
     API_V1_STR: str = "/api/v1"
@@ -28,11 +29,15 @@ class Settings(BaseSettings):
     # Authentication
     JWT_SECRET_KEY: str = "development-only-change-me"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    AUTH_COOKIE_NAME: str = "still_session"
+    AUTH_COOKIE_SECURE: bool = False
+    AUTH_COOKIE_SAMESITE: str = "lax"
 
     # Logging
     LOG_LEVEL: str = "INFO"
 
     class Config:
+        """Tell Pydantic where to read local environment values from."""
         env_file = ".env"
         case_sensitive = True
 

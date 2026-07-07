@@ -5,6 +5,7 @@ from app.db.base import Base
 
 
 class User(Base):
+    """A person who can sign in as a normal user or administrator."""
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True)

@@ -35,6 +35,7 @@ TIMEZONE_ALIASES = {
 
 
 def get_db():
+    """Open a database session for this request and close it afterward."""
     db = SessionLocal()
     try:
         yield db
@@ -47,6 +48,7 @@ def get_owned_session(
     session_id: int,
     device_id: int,
 ) -> MeditationSession:
+    """Find a listening session that belongs to the given device."""
     meditation_session = db.query(MeditationSession).filter(
         MeditationSession.id == session_id,
         MeditationSession.device_id == device_id,
@@ -57,6 +59,7 @@ def get_owned_session(
 
 
 def get_meditation_duration(db: Session, meditation_id: int) -> int:
+    """Return the saved duration for a meditation."""
     duration = db.query(Meditation.duration_sec).filter(
         Meditation.id == meditation_id
     ).scalar()
@@ -71,6 +74,7 @@ def apply_progress(
     payload: SessionProgress,
     duration_sec: int,
 ) -> None:
+    """Save the latest listening position and mindful time for a session."""
     previous_seconds = meditation_session.seconds_listened
     meditation_session.last_position_sec = min(payload.position_sec, duration_sec)
     # Heartbeats can arrive out of order. Never move accumulated listening time
@@ -91,6 +95,7 @@ def apply_progress(
 
 
 def parse_timezone(timezone_name: str) -> ZoneInfo:
+    """Turn a browser timezone name into a timezone the server can use."""
     canonical_name = TIMEZONE_ALIASES.get(timezone_name, timezone_name)
     try:
         return ZoneInfo(canonical_name)
@@ -99,12 +104,14 @@ def parse_timezone(timezone_name: str) -> ZoneInfo:
 
 
 def as_local_date(value: datetime, timezone: ZoneInfo) -> date:
+    """Convert a saved time into the listener's local calendar date."""
     if value.tzinfo is None:
         value = value.replace(tzinfo=UTC)
     return value.astimezone(timezone).date()
 
 
 def calculate_streaks(qualifying_dates: set[date], today: date) -> tuple[int, int]:
+    """Calculate the current and longest streak from active practice dates."""
     if not qualifying_dates:
         return 0, 0
 
@@ -136,6 +143,7 @@ def calculate_streaks(qualifying_dates: set[date], today: date) -> tuple[int, in
 
 @router.post("/start", response_model=SessionRead)
 def start_session(payload: SessionStart, db: Session = Depends(get_db)):
+    """Start a listening session or reuse an unfinished one."""
     meditation = db.query(Meditation).filter(
         Meditation.id == payload.meditation_id,
         Meditation.is_published.is_(True),
@@ -169,6 +177,7 @@ def update_progress(
     payload: SessionProgress,
     db: Session = Depends(get_db),
 ):
+    """Save the latest progress for an active listening session."""
     meditation_session = get_owned_session(db, session_id, payload.device_id)
     if meditation_session.completed_at is not None:
         return meditation_session
@@ -186,6 +195,7 @@ def complete_session(
     payload: SessionComplete,
     db: Session = Depends(get_db),
 ):
+    """Mark a listening session as completed."""
     meditation_session = get_owned_session(db, session_id, payload.device_id)
     if meditation_session.completed_at is not None:
         return meditation_session
@@ -205,6 +215,7 @@ def progress_summary(
     timezone_name: str = Query(default="UTC", alias="timezone", max_length=100),
     db: Session = Depends(get_db),
 ):
+    """Return mindful minutes, streaks, and recent activity for a device."""
     timezone = parse_timezone(timezone_name)
     sessions = db.query(MeditationSession).filter(
         MeditationSession.device_id == device_id,
@@ -291,6 +302,7 @@ def session_history(
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ):
+    """Return recent listening sessions for a device."""
     base_query = db.query(MeditationSession, Meditation).join(
         Meditation,
         Meditation.id == MeditationSession.meditation_id,

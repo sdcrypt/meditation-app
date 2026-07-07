@@ -7,7 +7,9 @@ from app.core.config import settings
 
 
 class S3Service:
+    """Small helper for uploading media files to S3."""
     def __init__(self):
+        """Create the S3 client using the configured AWS settings."""
         self.client = boto3.client(
             "s3",
             aws_access_key_id=settings.AWS_ACCESS_KEY,
@@ -22,6 +24,7 @@ class S3Service:
         content_type: str,
         prefix: str = "",
     ):
+        """Upload a file and return the public URL for it."""
         safe_filename = PurePath(filename.replace("\\", "/")).name
         unique_filename = f"{uuid.uuid4()}-{safe_filename}"
         key = f"{prefix.strip('/')}/{unique_filename}" if prefix else unique_filename
@@ -39,6 +42,7 @@ class S3Service:
         return self.generate_public_url(key)
 
     def generate_public_url(self, key: str):
+        """Build the public S3 URL for an uploaded object."""
         encoded_key = quote(key, safe="/")
         return (
             f"https://{settings.AWS_S3_BUCKET}.s3."

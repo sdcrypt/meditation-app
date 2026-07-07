@@ -6,6 +6,7 @@ from app.models.meditation import Meditation
 
 
 def init_db():
+    """Add a small demo meditation library when the database is empty."""
     db: Session = SessionLocal()
     try:
         # Seed only if empty. Schema creation belongs exclusively to Alembic.

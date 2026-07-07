@@ -51,8 +51,8 @@ export default function Admin() {
   const request = useCallback(async (path, options = {}) => {
     const response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
+      credentials: "include",
       headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
         ...options.headers,
       },
     });
@@ -208,8 +208,8 @@ export default function Admin() {
           </div>
           <button
             className="admin-logout"
-            onClick={() => {
-              logout();
+            onClick={async () => {
+              await logout();
               window.location.href = "/login";
             }}
           >

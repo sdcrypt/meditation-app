@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 
 def _normalize_url(value: str | None) -> str | None:
+    """Clean a URL and make sure it points to a web address."""
     if value is None:
         return None
 
@@ -26,6 +27,7 @@ def _normalize_string_list(
     item_max_length: int,
     lowercase: bool = False,
 ) -> list[str] | None:
+    """Clean a list of short text items and remove duplicates."""
     if value is None:
         return None
     if not isinstance(value, list):
@@ -56,6 +58,7 @@ def _normalize_string_list(
 
 
 class MeditationBase(BaseModel):
+    """Shared meditation fields used by create, update, and read schemas."""
     model_config = ConfigDict(str_strip_whitespace=True)
 
     title: str = Field(min_length=1, max_length=200)
@@ -73,11 +76,13 @@ class MeditationBase(BaseModel):
     @field_validator("audio_url", "artwork_url", mode="before")
     @classmethod
     def validate_urls(cls, value: str | None) -> str | None:
+        """Accept only valid web URLs for audio and artwork."""
         return _normalize_url(value)
 
     @field_validator("tags", mode="before")
     @classmethod
     def validate_tags(cls, value: list[str] | None) -> list[str]:
+        """Clean tags so search and personalization can use them."""
         return _normalize_string_list(
             value,
             field_name="tags",
@@ -89,6 +94,7 @@ class MeditationBase(BaseModel):
     @field_validator("benefits", mode="before")
     @classmethod
     def validate_benefits(cls, value: list[str] | None) -> list[str]:
+        """Clean benefit text shown to users on cards and detail pages."""
         return _normalize_string_list(
             value,
             field_name="benefits",
@@ -98,10 +104,12 @@ class MeditationBase(BaseModel):
 
 
 class MeditationCreate(MeditationBase):
+    """Fields accepted when an administrator creates a meditation."""
     is_published: bool = True
 
 
 class MeditationUpdate(BaseModel):
+    """Fields accepted when an administrator edits a meditation."""
     model_config = ConfigDict(str_strip_whitespace=True)
 
     title: str | None = Field(default=None, min_length=1, max_length=200)
@@ -120,11 +128,13 @@ class MeditationUpdate(BaseModel):
     @field_validator("audio_url", "artwork_url", mode="before")
     @classmethod
     def validate_urls(cls, value: str | None) -> str | None:
+        """Accept only valid web URLs for audio and artwork."""
         return _normalize_url(value)
 
     @field_validator("tags", mode="before")
     @classmethod
     def validate_tags(cls, value: list[str] | None) -> list[str] | None:
+        """Clean tags when they are included in an update."""
         return _normalize_string_list(
             value,
             field_name="tags",
@@ -136,6 +146,7 @@ class MeditationUpdate(BaseModel):
     @field_validator("benefits", mode="before")
     @classmethod
     def validate_benefits(cls, value: list[str] | None) -> list[str] | None:
+        """Clean benefit text when it is included in an update."""
         return _normalize_string_list(
             value,
             field_name="benefits",
@@ -145,6 +156,7 @@ class MeditationUpdate(BaseModel):
 
     @model_validator(mode="after")
     def reject_null_for_required_fields(self):
+        """Prevent required fields from being cleared by accident."""
         nullable_fields = {"audio_url", "artwork_url"}
         for field_name in self.model_fields_set - nullable_fields:
             if getattr(self, field_name) is None:
@@ -153,6 +165,7 @@ class MeditationUpdate(BaseModel):
 
 
 class MeditationRead(MeditationBase):
+    """Meditation details returned by public and admin APIs."""
     id: int
     is_published: bool
     created_at: datetime

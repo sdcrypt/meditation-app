@@ -17,6 +17,7 @@ MAX_ARTWORK_BYTES = 10 * 1024 * 1024
 
 
 def get_db():
+    """Open a database session for this request and close it afterward."""
     db = SessionLocal()
     try:
         yield db
@@ -30,6 +31,7 @@ def get_db():
     dependencies=[Depends(require_admin)],
 )
 def list_all_meditations(db: Session = Depends(get_db)):
+    """Return every meditation so an administrator can manage the library."""
     return db.query(Meditation).order_by(
         Meditation.created_at.desc(),
         Meditation.id.desc(),
@@ -41,6 +43,7 @@ def create_meditation(
     payload: MeditationCreate,
     db: Session = Depends(get_db),
 ):
+    """Create a new meditation record from the admin form."""
     logger.info("Creating meditation: title=%s, category=%s", payload.title, payload.category)
     meditation = Meditation(**payload.model_dump())
 
@@ -61,6 +64,7 @@ def upload_audio(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
+    """Upload an audio file and attach its public URL to a meditation."""
     logger.info("Uploading audio for meditation_id=%s, filename=%s", meditation_id, file.filename)
     meditation = db.query(Meditation).filter(
         Meditation.id == meditation_id
@@ -99,6 +103,7 @@ def upload_artwork(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
+    """Upload artwork for a meditation after checking the image type and size."""
     meditation = db.query(Meditation).filter(
         Meditation.id == meditation_id
     ).first()
@@ -146,6 +151,7 @@ def update_meditation(
     payload: MeditationUpdate,
     db: Session = Depends(get_db),
 ):
+    """Update the editable fields for one meditation."""
     update_data = payload.model_dump(exclude_unset=True)
     logger.info("Updating meditation_id=%s, fields=%s", meditation_id, list(update_data.keys()))
     meditation = db.query(Meditation).filter(
@@ -170,6 +176,7 @@ def delete_meditation(
     meditation_id: int,
     db: Session = Depends(get_db),
 ):
+    """Delete a meditation and its related listening sessions."""
     logger.info("Deleting meditation_id: %s", meditation_id)
     meditation = db.query(Meditation).filter(Meditation.id == meditation_id).first()
     if not meditation:
