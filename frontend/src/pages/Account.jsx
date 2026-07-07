@@ -40,8 +40,8 @@ export default function Account() {
           </article>
           <article>
             <span>Preferences</span>
-            <strong>Stored locally</strong>
-            <p>Account-level preference synchronization is not enabled yet.</p>
+            <strong>Synced to account</strong>
+            <p>Your onboarding choices now follow this account after sign in.</p>
           </article>
         </section>
 

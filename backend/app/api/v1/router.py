@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from app.api.v1 import sessions
 
-from app.api.v1 import health, meditations
+from app.api.v1 import health, meditations, preferences
 from app.api.v1.admin import meditations as admin_meditations
 from app.api.v1 import auth
 
@@ -35,4 +35,10 @@ api_router.include_router(
     auth.router,
     prefix="/auth",
     tags=["Auth"],
+)
+
+api_router.include_router(
+    preferences.router,
+    prefix="/preferences",
+    tags=["Preferences"],
 )
