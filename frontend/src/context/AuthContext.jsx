@@ -1,7 +1,16 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { API_BASE_URL } from "../config";
+import { API_BASE_URL, DEVICE_ID } from "../config";
 
 const AuthContext = createContext();
+
+const syncDeviceProgress = async () => {
+  await fetch(`${API_BASE_URL}/sessions/sync-device`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ device_id: Number(DEVICE_ID) }),
+  });
+};
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -20,7 +29,8 @@ export function AuthProvider({ children }) {
         if (!res.ok) throw new Error("Session validation failed");
         return res.json();
       })
-      .then((authenticatedUser) => {
+      .then(async (authenticatedUser) => {
+        await syncDeviceProgress().catch(() => {});
         setUser(authenticatedUser);
       })
       .catch((error) => {
@@ -49,6 +59,7 @@ export function AuthProvider({ children }) {
       }
 
       const authenticatedUser = await res.json();
+      await syncDeviceProgress().catch(() => {});
       setUser(authenticatedUser);
       return authenticatedUser;
     } catch (error) {

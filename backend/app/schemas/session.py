@@ -25,6 +25,7 @@ class SessionRead(BaseModel):
     """Listening session details returned to the frontend."""
     id: int
     meditation_id: int
+    user_id: int | None
     device_id: int
     started_at: datetime
     completed_at: datetime | None
@@ -81,3 +82,15 @@ class SessionHistoryResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class DeviceSyncRequest(BaseModel):
+    """The anonymous device that should be linked to the signed-in user."""
+    device_id: int = Field(gt=0)
+
+
+class DeviceSyncResponse(BaseModel):
+    """Summary of anonymous sessions linked to the signed-in user."""
+    device_id: int
+    user_id: int
+    attached_sessions: int

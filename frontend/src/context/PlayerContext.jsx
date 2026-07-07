@@ -88,6 +88,7 @@ export function PlayerProvider({ children }) {
     sessionPromiseRef.current = fetch(`${API_BASE_URL}/sessions/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({
         meditation_id: meditation.id,
         device_id: Number(DEVICE_ID),
@@ -147,6 +148,7 @@ export function PlayerProvider({ children }) {
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify(payload),
           keepalive,
         }
@@ -309,6 +311,7 @@ export function PlayerProvider({ children }) {
         await fetch(`${API_BASE_URL}/sessions/${activeSessionId}/complete`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             device_id: Number(DEVICE_ID),
             position_sec: Math.floor(duration || meditation.duration_sec),

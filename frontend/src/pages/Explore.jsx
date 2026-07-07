@@ -62,6 +62,7 @@ export default function Explore() {
   useEffect(() => {
     const controller = new AbortController();
     fetch(`${API_BASE_URL}/sessions/history/${DEVICE_ID}?limit=50`, {
+      credentials: "include",
       signal: controller.signal,
     })
       .then((response) => response.ok ? response.json() : { items: [] })

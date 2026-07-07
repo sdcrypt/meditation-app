@@ -9,6 +9,12 @@ class MeditationSession(Base):
 
     id = Column(Integer, primary_key=True)
     meditation_id = Column(Integer, ForeignKey("meditations.id"))
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     device_id = Column(Integer)
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)

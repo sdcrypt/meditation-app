@@ -49,10 +49,12 @@ export default function Progress() {
     try {
       const [summaryResponse, historyResponse] = await Promise.all([
         fetch(
-          `${API_BASE_URL}/sessions/progress/${DEVICE_ID}?timezone=${encodeURIComponent(timezone)}`
+          `${API_BASE_URL}/sessions/progress/${DEVICE_ID}?timezone=${encodeURIComponent(timezone)}`,
+          { credentials: "include" }
         ),
         fetch(
-          `${API_BASE_URL}/sessions/history/${DEVICE_ID}?limit=${historyLimit}`
+          `${API_BASE_URL}/sessions/history/${DEVICE_ID}?limit=${historyLimit}`,
+          { credentials: "include" }
         ),
       ]);
       if (!summaryResponse.ok || !historyResponse.ok) {

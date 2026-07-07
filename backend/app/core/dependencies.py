@@ -31,6 +31,25 @@ def get_current_user(
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
+    return get_user_from_token(token, db)
+
+
+def get_optional_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    cookie_token: str | None = Cookie(default=None, alias=settings.AUTH_COOKIE_NAME),
+    db: Session = Depends(get_db),
+):
+    """Return the signed-in user when a request has a session, otherwise none."""
+    token = credentials.credentials if credentials else cookie_token
+    if not token:
+        return None
+
+    return get_user_from_token(token, db)
+
+
+def get_user_from_token(token: str, db: Session) -> User:
+    """Decode a login token and load the matching active user."""
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         subject = payload.get("sub")

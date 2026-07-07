@@ -3,14 +3,19 @@ from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 
+from app.core.dependencies import get_current_user, get_optional_user
 from app.db.session import SessionLocal
 from app.models.meditation import Meditation
 from app.models.session import MeditationSession, MeditationSessionActivity
+from app.models.user import User
 from app.schemas.session import (
     DailyActivity,
+    DeviceSyncRequest,
+    DeviceSyncResponse,
     ProgressSummary,
     SessionComplete,
     SessionHistoryItem,
@@ -47,15 +52,47 @@ def get_owned_session(
     db: Session,
     session_id: int,
     device_id: int,
+    current_user: User | None,
 ) -> MeditationSession:
-    """Find a listening session that belongs to the given device."""
-    meditation_session = db.query(MeditationSession).filter(
-        MeditationSession.id == session_id,
-        MeditationSession.device_id == device_id,
-    ).first()
+    """Find a listening session that belongs to the user or device."""
+    query = db.query(MeditationSession).filter(MeditationSession.id == session_id)
+    if current_user is not None:
+        query = query.filter(
+            or_(
+                MeditationSession.user_id == current_user.id,
+                (
+                    (MeditationSession.user_id.is_(None))
+                    & (MeditationSession.device_id == device_id)
+                ),
+            )
+        )
+    else:
+        query = query.filter(
+            MeditationSession.user_id.is_(None),
+            MeditationSession.device_id == device_id,
+        )
+
+    meditation_session = query.first()
     if meditation_session is None:
         raise HTTPException(status_code=404, detail="Session not found")
+    if current_user is not None and meditation_session.user_id is None:
+        meditation_session.user_id = current_user.id
     return meditation_session
+
+
+def owned_sessions_query(
+    db: Session,
+    device_id: int,
+    current_user: User | None,
+):
+    """Build a session query for the signed-in user or anonymous device."""
+    query = db.query(MeditationSession)
+    if current_user is not None:
+        return query.filter(MeditationSession.user_id == current_user.id)
+    return query.filter(
+        MeditationSession.user_id.is_(None),
+        MeditationSession.device_id == device_id,
+    )
 
 
 def get_meditation_duration(db: Session, meditation_id: int) -> int:
@@ -142,7 +179,11 @@ def calculate_streaks(qualifying_dates: set[date], today: date) -> tuple[int, in
 
 
 @router.post("/start", response_model=SessionRead)
-def start_session(payload: SessionStart, db: Session = Depends(get_db)):
+def start_session(
+    payload: SessionStart,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+):
     """Start a listening session or reuse an unfinished one."""
     meditation = db.query(Meditation).filter(
         Meditation.id == payload.meditation_id,
@@ -153,17 +194,40 @@ def start_session(payload: SessionStart, db: Session = Depends(get_db)):
     if not meditation.audio_url:
         raise HTTPException(status_code=409, detail="Meditation audio is unavailable")
 
-    existing_session = db.query(MeditationSession).filter(
+    existing_query = db.query(MeditationSession).filter(
         MeditationSession.meditation_id == payload.meditation_id,
-        MeditationSession.device_id == payload.device_id,
         MeditationSession.completed_at.is_(None),
-    ).order_by(MeditationSession.started_at.desc()).first()
+    )
+    if current_user is not None:
+        existing_query = existing_query.filter(
+            or_(
+                MeditationSession.user_id == current_user.id,
+                (
+                    (MeditationSession.user_id.is_(None))
+                    & (MeditationSession.device_id == payload.device_id)
+                ),
+            )
+        )
+    else:
+        existing_query = existing_query.filter(
+            MeditationSession.user_id.is_(None),
+            MeditationSession.device_id == payload.device_id,
+        )
+
+    existing_session = existing_query.order_by(
+        MeditationSession.started_at.desc()
+    ).first()
     if existing_session is not None:
+        if current_user is not None and existing_session.user_id is None:
+            existing_session.user_id = current_user.id
+            db.commit()
+            db.refresh(existing_session)
         return existing_session
 
     meditation_session = MeditationSession(
         meditation_id=payload.meditation_id,
         device_id=payload.device_id,
+        user_id=current_user.id if current_user is not None else None,
     )
     db.add(meditation_session)
     db.commit()
@@ -176,9 +240,15 @@ def update_progress(
     session_id: int,
     payload: SessionProgress,
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
 ):
     """Save the latest progress for an active listening session."""
-    meditation_session = get_owned_session(db, session_id, payload.device_id)
+    meditation_session = get_owned_session(
+        db,
+        session_id,
+        payload.device_id,
+        current_user,
+    )
     if meditation_session.completed_at is not None:
         return meditation_session
 
@@ -194,9 +264,15 @@ def complete_session(
     session_id: int,
     payload: SessionComplete,
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
 ):
     """Mark a listening session as completed."""
-    meditation_session = get_owned_session(db, session_id, payload.device_id)
+    meditation_session = get_owned_session(
+        db,
+        session_id,
+        payload.device_id,
+        current_user,
+    )
     if meditation_session.completed_at is not None:
         return meditation_session
 
@@ -214,11 +290,11 @@ def progress_summary(
     device_id: int,
     timezone_name: str = Query(default="UTC", alias="timezone", max_length=100),
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
 ):
-    """Return mindful minutes, streaks, and recent activity for a device."""
+    """Return mindful minutes, streaks, and recent activity."""
     timezone = parse_timezone(timezone_name)
-    sessions = db.query(MeditationSession).filter(
-        MeditationSession.device_id == device_id,
+    sessions = owned_sessions_query(db, device_id, current_user).filter(
         MeditationSession.seconds_listened > 0,
     ).all()
 
@@ -301,15 +377,21 @@ def session_history(
     limit: int = Query(default=10, ge=1, le=50),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
 ):
-    """Return recent listening sessions for a device."""
+    """Return recent listening sessions."""
     base_query = db.query(MeditationSession, Meditation).join(
         Meditation,
         Meditation.id == MeditationSession.meditation_id,
-    ).filter(
-        MeditationSession.device_id == device_id,
-        MeditationSession.seconds_listened > 0,
     )
+    if current_user is not None:
+        base_query = base_query.filter(MeditationSession.user_id == current_user.id)
+    else:
+        base_query = base_query.filter(
+            MeditationSession.user_id.is_(None),
+            MeditationSession.device_id == device_id,
+        )
+    base_query = base_query.filter(MeditationSession.seconds_listened > 0)
     total = base_query.count()
     rows = base_query.order_by(
         func.coalesce(
@@ -362,10 +444,36 @@ def session_history(
     )
 
 
+@router.post("/sync-device", response_model=DeviceSyncResponse)
+def sync_device_sessions(
+    payload: DeviceSyncRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Link anonymous listening sessions from this browser to the user."""
+    updated = db.query(MeditationSession).filter(
+        MeditationSession.device_id == payload.device_id,
+        MeditationSession.user_id.is_(None),
+    ).update(
+        {MeditationSession.user_id: current_user.id},
+        synchronize_session=False,
+    )
+    db.commit()
+    return DeviceSyncResponse(
+        device_id=payload.device_id,
+        user_id=current_user.id,
+        attached_sessions=updated,
+    )
+
+
 @router.get("/stats/{device_id}")
-def stats(device_id: int, db: Session = Depends(get_db)):
+def stats(
+    device_id: int,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+):
     """Backward-compatible lightweight stats endpoint."""
-    total_seconds = db.query(func.sum(MeditationSession.seconds_listened)).filter(
-        MeditationSession.device_id == device_id
+    total_seconds = owned_sessions_query(db, device_id, current_user).with_entities(
+        func.sum(MeditationSession.seconds_listened)
     ).scalar() or 0
     return {"total_minutes": round(total_seconds / 60)}
