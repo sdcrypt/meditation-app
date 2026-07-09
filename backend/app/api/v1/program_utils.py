@@ -58,6 +58,7 @@ def program_to_read(
         meditations=[
             ProgramMeditationRead(
                 position=item.position,
+                is_completed=meditation.id in completed_ids,
                 meditation=meditation,
             )
             for item, meditation in rows

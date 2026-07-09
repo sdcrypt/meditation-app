@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import MeditationArtwork from "../components/MeditationArtwork";
 import { formatDuration } from "../components/MeditationCard";
 import { API_BASE_URL } from "../config";
@@ -7,6 +7,7 @@ import { useAuth } from "../context/AuthContext";
 
 export default function ProgramDetail() {
   const { programId } = useParams();
+  const navigate = useNavigate();
   const [program, setProgram] = useState(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
@@ -34,29 +35,6 @@ export default function ProgramDetail() {
     return () => controller.abort();
   }, [programId]);
 
-  const startProgram = async () => {
-    if (!user) {
-      window.location.href = "/login";
-      return;
-    }
-
-    setStarting(true);
-    setError("");
-    try {
-      const response = await fetch(`${API_BASE_URL}/programs/${program.id}/start`, {
-        method: "POST",
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Unable to start this program.");
-      const enrollment = await response.json();
-      setProgram(enrollment.program);
-    } catch (requestError) {
-      setError(requestError.message);
-    } finally {
-      setStarting(false);
-    }
-  };
-
   if (loading) {
     return <main className="program-detail-page"><div className="detail-loading">Opening your program…</div></main>;
   }
@@ -81,6 +59,39 @@ export default function ProgramDetail() {
   const totalMeditations = program.total_meditations ?? program.meditations.length;
   const completedMeditations = program.completed_meditations ?? 0;
   const completionPercent = program.completion_percent ?? 0;
+  const firstMeditation = program.meditations?.[0]?.meditation ?? null;
+  const nextProgramItem = program.meditations.find((item) => !item.is_completed) ?? null;
+  const nextMeditation = nextProgramItem?.meditation ?? firstMeditation;
+  const isProgramComplete = totalMeditations > 0 && completedMeditations === totalMeditations;
+
+  const handleProgramAction = async () => {
+    if (!user) {
+      window.location.href = "/login";
+      return;
+    }
+
+    if (program.is_enrolled) {
+      if (!isProgramComplete && nextMeditation) navigate(`/meditations/${nextMeditation.id}`);
+      return;
+    }
+
+    setStarting(true);
+    setError("");
+    try {
+      const response = await fetch(`${API_BASE_URL}/programs/${program.id}/start`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Unable to start this program.");
+      const enrollment = await response.json();
+      setProgram(enrollment.program);
+      if (nextMeditation) navigate(`/meditations/${nextMeditation.id}`);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setStarting(false);
+    }
+  };
 
   return (
     <main className="program-detail-page">
@@ -109,15 +120,17 @@ export default function ProgramDetail() {
             </div>
           )}
           <button
-            className={`program-start-button ${program.is_enrolled ? "is-started" : ""}`}
-            onClick={startProgram}
-            disabled={starting || program.is_enrolled}
+            className={`program-start-button ${isProgramComplete ? "is-started" : ""}`}
+            onClick={handleProgramAction}
+            disabled={starting || isProgramComplete}
           >
             {starting
               ? "Starting…"
-              : program.is_enrolled
-                ? "✓ Program started"
-                : "Start program"}
+              : isProgramComplete
+                ? "✓ Program complete"
+                : program.is_enrolled
+                  ? "Continue program"
+                  : "Start program"}
           </button>
         </div>
       </section>
@@ -131,22 +144,31 @@ export default function ProgramDetail() {
           <p>Move through these meditations in order, or choose the practice you need today.</p>
         </div>
         <div className="program-step-list">
-          {program.meditations.map((item) => (
+          {program.meditations.map((item) => {
+            const isNextUp = program.is_enrolled && nextProgramItem?.meditation.id === item.meditation.id;
+            return (
             <Link
-              className="program-step"
+              className={`program-step ${item.is_completed ? "is-completed" : ""} ${isNextUp ? "is-next" : ""}`}
               to={`/meditations/${item.meditation.id}`}
               key={`${item.position}-${item.meditation.id}`}
             >
-              <span>{String(item.position).padStart(2, "0")}</span>
+              <span>{item.is_completed ? "✓" : String(item.position).padStart(2, "0")}</span>
               <MeditationArtwork meditation={item.meditation} />
               <div>
-                <small>{item.meditation.category} · {formatDuration(item.meditation.duration_sec)}</small>
+                <small>
+                  {item.is_completed
+                    ? "Completed"
+                    : isNextUp
+                      ? "Next up"
+                      : "Not started"} · {item.meditation.category} · {formatDuration(item.meditation.duration_sec)}
+                </small>
                 <strong>{item.meditation.title}</strong>
                 <p>{item.meditation.teacher_name || "Still guide"}</p>
               </div>
-              <b>Start →</b>
+              <b>{item.is_completed ? "Replay →" : isNextUp ? "Continue →" : "Start →"}</b>
             </Link>
-          ))}
+            );
+          })}
         </div>
       </section>
     </main>

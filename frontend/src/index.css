@@ -349,13 +349,21 @@ button { cursor: pointer; }
 .program-sequence { padding-bottom:115px; }
 .program-step-list { display:flex; flex-direction:column; gap:13px; }
 .program-step { display:grid; grid-template-columns:56px 82px 1fr auto; align-items:center; gap:17px; padding:14px; border:1px solid #dedfd8; border-radius:18px; background:#fbfaf6; }
+.program-step.is-completed { border-color:#c9dccf; background:#f3f8f2; }
+.program-step.is-next { border-color:#c98a72; box-shadow:0 15px 34px rgba(189,112,88,.13); }
 .program-step > span { display:grid; place-items:center; width:42px; height:42px; border-radius:50%; color:#a46655; background:#f2ded3; font-family:"Playfair Display",serif; font-size:17px; }
+.program-step.is-completed > span { color:white; background:#3f786a; font-family:inherit; font-size:15px; font-weight:700; }
+.program-step.is-next > span { color:white; background:#bd7058; }
 .program-step > .meditation-art { width:82px; height:82px; border-radius:15px; }
 .program-step div { min-width:0; }
 .program-step small { color:#9aa49f; font-size:8px; letter-spacing:.7px; text-transform:uppercase; }
+.program-step.is-completed small { color:#4f7a68; }
+.program-step.is-next small { color:#bd7058; }
 .program-step strong { display:block; overflow:hidden; margin:5px 0; font-family:"Playfair Display",serif; font-size:21px; font-weight:500; white-space:nowrap; text-overflow:ellipsis; }
 .program-step p { margin:0; color:#89958f; font-size:9px; }
 .program-step b { color:#a46655; font-size:9px; font-weight:600; }
+.program-step.is-completed b { color:#3f786a; }
+.program-step.is-next b { color:#bd7058; }
 
 .onboarding-overlay { position:fixed; z-index:250; inset:0; display:grid; place-items:center; padding:24px; background:rgba(8,32,28,.7); backdrop-filter:blur(12px); }
 .onboarding-modal { width:min(960px,100%); min-height:610px; display:grid; grid-template-columns:.78fr 1.22fr; overflow:hidden; border-radius:24px; background:#faf9f4; box-shadow:0 35px 100px rgba(4,24,20,.35); }
