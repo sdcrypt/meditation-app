@@ -8,6 +8,8 @@ import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import Home from "./pages/Home";
 import Explore from "./pages/Explore";
 import MeditationDetail from "./pages/MeditationDetail";
+import Programs from "./pages/Programs";
+import ProgramDetail from "./pages/ProgramDetail";
 import Progress from "./pages/Progress";
 import Admin from "./pages/Admin";
 import Login from "./pages/Login";
@@ -56,6 +58,7 @@ export default function App() {
                 <a href="/#benefits">Meditate</a>
                 <a href="/#featured">Sleep</a>
                 <Link to="/explore">Explore</Link>
+                <Link to="/programs">Programs</Link>
                 <Link to="/progress">Progress</Link>
                 <a href="/#benefits">About</a>
               </nav>
@@ -88,6 +91,8 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/explore" element={<Explore />} />
+            <Route path="/programs" element={<Programs />} />
+            <Route path="/programs/:programId" element={<ProgramDetail />} />
             <Route path="/meditations/:meditationId" element={<MeditationDetail />} />
             <Route path="/progress" element={<Progress />} />
             <Route path="/login" element={<Login />} />
@@ -109,7 +114,7 @@ export default function App() {
                 <span className="brand__mark"><i /><i /><i /></span><span>still.</span>
               </Link>
               <p>Mindfulness for real life.</p>
-              <div><a href="/#benefits">Meditate</a><a href="/#featured">Sleep</a><Link to="/explore">Explore</Link><Link to="/progress">Progress</Link></div>
+              <div><a href="/#benefits">Meditate</a><a href="/#featured">Sleep</a><Link to="/explore">Explore</Link><Link to="/programs">Programs</Link><Link to="/progress">Progress</Link></div>
               <small>© 2026 Still Mindful, Inc.</small>
             </div>
           </footer>

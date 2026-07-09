@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import MeditationCard from "../components/MeditationCard";
+import ProgramCard from "../components/ProgramCard";
 import { API_BASE_URL, DEVICE_ID } from "../config";
 import { usePreferences } from "../context/PreferencesContext";
 import {
@@ -24,6 +25,7 @@ const durationMatches = (duration, seconds) => {
 
 export default function Explore() {
   const [meditations, setMeditations] = useState([]);
+  const [programs, setPrograms] = useState([]);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [duration, setDuration] = useState("all");
@@ -55,6 +57,17 @@ export default function Explore() {
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${API_BASE_URL}/programs/?limit=6`, { signal: controller.signal })
+      .then((response) => response.ok ? response.json() : [])
+      .then(setPrograms)
+      .catch((requestError) => {
+        if (requestError.name !== "AbortError") setPrograms([]);
       });
     return () => controller.abort();
   }, []);
@@ -190,6 +203,23 @@ export default function Explore() {
           <section className="personalization-invite">
             <div><span>✦</span><div><strong>Make this library yours</strong><p>Answer four quick questions for more relevant practices.</p></div></div>
             <button onClick={openOnboarding}>Personalize</button>
+          </section>
+        )}
+
+        {programs.length > 0 && !hasFilters && (
+          <section className="explore-programs">
+            <div className="explore-section-heading">
+              <div>
+                <p className="eyebrow">Guided paths</p>
+                <h2>Programs</h2>
+              </div>
+              <p>Structured sequences for calm, sleep, and beginner mindfulness.</p>
+            </div>
+            <div className="program-grid program-grid--compact">
+              {programs.map((program) => (
+                <ProgramCard key={program.id} program={program} />
+              ))}
+            </div>
           </section>
         )}
 

@@ -15,6 +15,16 @@ const EMPTY_MEDITATION = {
   is_published: true,
 };
 
+const EMPTY_PROGRAM = {
+  title: "",
+  description: "",
+  artwork_url: "",
+  level: "beginner",
+  goal: "",
+  is_published: true,
+  meditation_ids_text: "",
+};
+
 const withDraftFields = (meditation) => ({
   ...meditation,
   tags_text: (meditation.tags ?? []).join(", "),
@@ -27,6 +37,19 @@ const parseTags = (value) =>
 const parseBenefits = (value) =>
   value.split("\n").map((item) => item.trim()).filter(Boolean);
 
+const parseMeditationIds = (value) =>
+  value
+    .split(",")
+    .map((item) => Number(item.trim()))
+    .filter((item) => Number.isInteger(item) && item > 0);
+
+const withProgramDraftFields = (program) => ({
+  ...program,
+  meditation_ids_text: (program.meditations ?? [])
+    .map((item) => item.meditation.id)
+    .join(", "),
+});
+
 const getErrorMessage = (payload, fallback) => {
   if (typeof payload?.detail === "string") return payload.detail;
   if (Array.isArray(payload?.detail)) {
@@ -38,7 +61,9 @@ const getErrorMessage = (payload, fallback) => {
 export default function Admin() {
   const { logout } = useAuth();
   const [meditations, setMeditations] = useState([]);
+  const [programs, setPrograms] = useState([]);
   const [newMeditation, setNewMeditation] = useState(EMPTY_MEDITATION);
+  const [newProgram, setNewProgram] = useState(EMPTY_PROGRAM);
   const [newAudioFile, setNewAudioFile] = useState(null);
   const [newArtworkFile, setNewArtworkFile] = useState(null);
   const [creating, setCreating] = useState(false);
@@ -75,12 +100,28 @@ export default function Admin() {
     }
   }, [request]);
 
+  const fetchPrograms = useCallback(async () => {
+    try {
+      const data = await request("/admin/programs/");
+      setPrograms(data.map(withProgramDraftFields));
+    } catch (error) {
+      setPageError(error.message);
+    }
+  }, [request]);
+
   useEffect(() => {
     fetchMeditations();
-  }, [fetchMeditations]);
+    fetchPrograms();
+  }, [fetchMeditations, fetchPrograms]);
 
   const setMeditationField = (id, field, value) => {
     setMeditations((current) =>
+      current.map((item) => item.id === id ? { ...item, [field]: value } : item)
+    );
+  };
+
+  const setProgramField = (id, field, value) => {
+    setPrograms((current) =>
       current.map((item) => item.id === id ? { ...item, [field]: value } : item)
     );
   };
@@ -125,6 +166,16 @@ export default function Admin() {
     is_published: meditation.is_published,
   });
 
+  const programPayload = (program) => ({
+    title: program.title.trim(),
+    description: program.description.trim(),
+    artwork_url: program.artwork_url.trim() || null,
+    level: program.level.trim(),
+    goal: program.goal.trim(),
+    is_published: program.is_published,
+    meditation_ids: parseMeditationIds(program.meditation_ids_text),
+  });
+
   const handleCreateMeditation = async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -160,6 +211,24 @@ export default function Admin() {
     }
   };
 
+  const handleCreateProgram = async (event) => {
+    event.preventDefault();
+    setPageError("");
+    setNotice("");
+    try {
+      const created = await request("/admin/programs/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(programPayload(newProgram)),
+      });
+      setPrograms((current) => [withProgramDraftFields(created), ...current]);
+      setNewProgram(EMPTY_PROGRAM);
+      setNotice("Program created successfully.");
+    } catch (error) {
+      setPageError(error.message);
+    }
+  };
+
   const updateMeditation = async (meditation) => {
     setSavingId(meditation.id);
     setPageError("");
@@ -192,6 +261,39 @@ export default function Admin() {
         current.filter((item) => item.id !== meditation.id)
       );
       setNotice("Meditation deleted.");
+    } catch (error) {
+      setPageError(error.message);
+    }
+  };
+
+  const updateProgram = async (program) => {
+    setSavingId(`program-${program.id}`);
+    setPageError("");
+    setNotice("");
+    try {
+      const updated = await request(`/admin/programs/${program.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(programPayload(program)),
+      });
+      setPrograms((current) =>
+        current.map((item) => item.id === program.id ? withProgramDraftFields(updated) : item)
+      );
+      setNotice(`“${updated.title}” saved.`);
+    } catch (error) {
+      setPageError(error.message);
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const deleteProgram = async (program) => {
+    if (!window.confirm(`Delete “${program.title}”? This cannot be undone.`)) return;
+    setPageError("");
+    try {
+      await request(`/admin/programs/${program.id}`, { method: "DELETE" });
+      setPrograms((current) => current.filter((item) => item.id !== program.id));
+      setNotice("Program deleted.");
     } catch (error) {
       setPageError(error.message);
     }
@@ -439,6 +541,127 @@ export default function Admin() {
                         {savingId === meditation.id ? "Saving…" : "Save changes"}
                       </button>
                     </div>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="admin-library admin-programs">
+          <div className="admin-section-title">
+            <span>03</span>
+            <div><h2>Programs</h2><p>Create guided paths from ordered meditation IDs.</p></div>
+          </div>
+
+          <form className="admin-program-create" onSubmit={handleCreateProgram}>
+            <div className="admin-form-grid">
+              <label className="admin-field admin-field--wide">
+                <span>Program title</span>
+                <input required maxLength={200} value={newProgram.title}
+                  onChange={(event) => setNewProgram((item) => ({ ...item, title: event.target.value }))}
+                  placeholder="7 Days of Calm" />
+              </label>
+              <label className="admin-field">
+                <span>Goal</span>
+                <input maxLength={80} value={newProgram.goal}
+                  onChange={(event) => setNewProgram((item) => ({ ...item, goal: event.target.value }))}
+                  placeholder="stress, sleep, mindfulness" />
+              </label>
+              <label className="admin-field">
+                <span>Level</span>
+                <select value={newProgram.level}
+                  onChange={(event) => setNewProgram((item) => ({ ...item, level: event.target.value }))}>
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                  <option value="all levels">All levels</option>
+                </select>
+              </label>
+              <label className="admin-field admin-field--full">
+                <span>Description</span>
+                <textarea rows="3" maxLength={5000} value={newProgram.description}
+                  onChange={(event) => setNewProgram((item) => ({ ...item, description: event.target.value }))}
+                  placeholder="Describe the journey this program guides users through." />
+              </label>
+              <label className="admin-field admin-field--wide">
+                <span>Artwork URL <small>optional</small></span>
+                <input value={newProgram.artwork_url}
+                  onChange={(event) => setNewProgram((item) => ({ ...item, artwork_url: event.target.value }))}
+                  placeholder="https://…" />
+              </label>
+              <label className="admin-field admin-field--wide">
+                <span>Meditation IDs <small>comma separated in order</small></span>
+                <input value={newProgram.meditation_ids_text}
+                  onChange={(event) => setNewProgram((item) => ({ ...item, meditation_ids_text: event.target.value }))}
+                  placeholder={meditations.map((item) => item.id).join(", ")} />
+              </label>
+            </div>
+            <div className="admin-card__bottom">
+              <div className="admin-publish-controls admin-publish-controls--inline">
+                <label><input type="checkbox" checked={newProgram.is_published}
+                  onChange={(event) => setNewProgram((item) => ({ ...item, is_published: event.target.checked }))} />
+                  Published</label>
+              </div>
+              <button className="admin-primary-button" type="submit">Create program</button>
+            </div>
+          </form>
+
+          <div className="admin-program-list">
+            {programs.map((program) => (
+              <article className="admin-program-card" key={program.id}>
+                <div className="admin-form-grid admin-form-grid--edit">
+                  <label className="admin-field admin-field--wide">
+                    <span>Title</span>
+                    <input value={program.title}
+                      onChange={(event) => setProgramField(program.id, "title", event.target.value)} />
+                  </label>
+                  <label className="admin-field">
+                    <span>Goal</span>
+                    <input value={program.goal}
+                      onChange={(event) => setProgramField(program.id, "goal", event.target.value)} />
+                  </label>
+                  <label className="admin-field">
+                    <span>Level</span>
+                    <select value={program.level}
+                      onChange={(event) => setProgramField(program.id, "level", event.target.value)}>
+                      <option value="beginner">Beginner</option>
+                      <option value="intermediate">Intermediate</option>
+                      <option value="advanced">Advanced</option>
+                      <option value="all levels">All levels</option>
+                    </select>
+                  </label>
+                  <label className="admin-field admin-field--full">
+                    <span>Description</span>
+                    <textarea rows="3" value={program.description}
+                      onChange={(event) => setProgramField(program.id, "description", event.target.value)} />
+                  </label>
+                  <label className="admin-field admin-field--wide">
+                    <span>Artwork URL</span>
+                    <input value={program.artwork_url || ""}
+                      onChange={(event) => setProgramField(program.id, "artwork_url", event.target.value)} />
+                  </label>
+                  <label className="admin-field admin-field--wide">
+                    <span>Meditation IDs <small>comma separated in order</small></span>
+                    <input value={program.meditation_ids_text}
+                      onChange={(event) => setProgramField(program.id, "meditation_ids_text", event.target.value)} />
+                  </label>
+                </div>
+                <div className="admin-card__bottom">
+                  <div className="admin-publish-controls admin-publish-controls--inline">
+                    <label><input type="checkbox" checked={program.is_published}
+                      onChange={(event) => setProgramField(program.id, "is_published", event.target.checked)} />
+                      Published</label>
+                    <span>{program.meditations?.length ?? 0} practices</span>
+                  </div>
+                  <div className="admin-card__actions">
+                    <button className="admin-delete-button" type="button"
+                      onClick={() => deleteProgram(program)}>Delete</button>
+                    <button className="admin-primary-button" type="button"
+                      disabled={savingId === `program-${program.id}`}
+                      onClick={() => updateProgram(program)}>
+                      {savingId === `program-${program.id}` ? "Saving…" : "Save program"}
+                    </button>
                   </div>
                 </div>
               </article>
