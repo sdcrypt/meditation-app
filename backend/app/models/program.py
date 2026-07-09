@@ -46,3 +46,27 @@ class ProgramMeditation(Base):
         index=True,
     )
     position = Column(Integer, nullable=False)
+
+
+class UserProgram(Base):
+    """A program started by a signed-in user."""
+    __tablename__ = "user_programs"
+    __table_args__ = (
+        UniqueConstraint("user_id", "program_id", name="uq_user_program"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    program_id = Column(
+        Integer,
+        ForeignKey("programs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    started_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)

@@ -8,7 +8,7 @@ from app.db.base import Base
 from app.models.favorite import UserFavorite  # noqa: F401
 from app.models.meditation import Meditation  # noqa: F401
 from app.models.preference import UserPreference  # noqa: F401
-from app.models.program import Program, ProgramMeditation  # noqa: F401
+from app.models.program import Program, ProgramMeditation, UserProgram  # noqa: F401
 from app.models.session import MeditationSession  # noqa: F401
 from app.models.user import User  # noqa: F401
 

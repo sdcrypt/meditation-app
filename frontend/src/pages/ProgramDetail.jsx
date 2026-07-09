@@ -3,16 +3,22 @@ import { Link, useParams } from "react-router-dom";
 import MeditationArtwork from "../components/MeditationArtwork";
 import { formatDuration } from "../components/MeditationCard";
 import { API_BASE_URL } from "../config";
+import { useAuth } from "../context/AuthContext";
 
 export default function ProgramDetail() {
   const { programId } = useParams();
   const [program, setProgram] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
+  const { user } = useAuth();
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`${API_BASE_URL}/programs/${programId}`, { signal: controller.signal })
+    fetch(`${API_BASE_URL}/programs/${programId}`, {
+      credentials: "include",
+      signal: controller.signal,
+    })
       .then((response) => {
         if (response.status === 404) throw new Error("This program is not available.");
         if (!response.ok) throw new Error("Unable to load this program.");
@@ -27,6 +33,29 @@ export default function ProgramDetail() {
       });
     return () => controller.abort();
   }, [programId]);
+
+  const startProgram = async () => {
+    if (!user) {
+      window.location.href = "/login";
+      return;
+    }
+
+    setStarting(true);
+    setError("");
+    try {
+      const response = await fetch(`${API_BASE_URL}/programs/${program.id}/start`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Unable to start this program.");
+      const enrollment = await response.json();
+      setProgram(enrollment.program);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setStarting(false);
+    }
+  };
 
   if (loading) {
     return <main className="program-detail-page"><div className="detail-loading">Opening your program…</div></main>;
@@ -67,6 +96,17 @@ export default function ProgramDetail() {
             <span>{program.level}</span>
             <span>{program.goal || "mindfulness"}</span>
           </div>
+          <button
+            className={`program-start-button ${program.is_enrolled ? "is-started" : ""}`}
+            onClick={startProgram}
+            disabled={starting || program.is_enrolled}
+          >
+            {starting
+              ? "Starting…"
+              : program.is_enrolled
+                ? "✓ Program started"
+                : "Start program"}
+          </button>
         </div>
       </section>
 

@@ -5,7 +5,12 @@ from app.models.program import Program, ProgramMeditation
 from app.schemas.program import ProgramMeditationRead, ProgramRead
 
 
-def program_to_read(db: Session, program: Program) -> ProgramRead:
+def program_to_read(
+    db: Session,
+    program: Program,
+    *,
+    is_enrolled: bool = False,
+) -> ProgramRead:
     """Build a program response with meditations in the saved order."""
     rows = db.query(ProgramMeditation, Meditation).join(
         Meditation,
@@ -25,6 +30,7 @@ def program_to_read(db: Session, program: Program) -> ProgramRead:
         is_published=program.is_published,
         created_at=program.created_at,
         updated_at=program.updated_at,
+        is_enrolled=is_enrolled,
         meditations=[
             ProgramMeditationRead(
                 position=item.position,

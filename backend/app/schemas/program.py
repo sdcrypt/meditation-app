@@ -60,6 +60,17 @@ class ProgramRead(ProgramBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    is_enrolled: bool = False
     meditations: list[ProgramMeditationRead] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserProgramRead(BaseModel):
+    """A program enrollment saved for a signed-in user."""
+    id: int
+    user_id: int
+    program_id: int
+    started_at: datetime
+    completed_at: datetime | None
+    program: ProgramRead
