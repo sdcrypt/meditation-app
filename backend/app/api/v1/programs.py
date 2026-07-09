@@ -34,24 +34,27 @@ def list_programs(
         Program.created_at.desc(),
         Program.id.desc(),
     ).offset(offset).limit(limit).all()
-    enrolled_ids = set()
+    enrollments_by_program_id = {}
     if current_user is not None and programs:
-        enrolled_ids = {
-            item[0]
-            for item in db.query(UserProgram.program_id).filter(
+        enrollments_by_program_id = {
+            enrollment.program_id: enrollment
+            for enrollment in db.query(UserProgram).filter(
                 UserProgram.user_id == current_user.id,
                 UserProgram.program_id.in_([program.id for program in programs]),
             ).all()
         }
-    return [
+    result = [
         program_to_read(
             db,
             program,
             current_user=current_user,
-            is_enrolled=program.id in enrolled_ids,
+            enrollment=enrollments_by_program_id.get(program.id),
         )
         for program in programs
     ]
+    if enrollments_by_program_id:
+        db.commit()
+    return result
 
 
 @router.get("/{program_id}", response_model=ProgramRead)
@@ -67,18 +70,21 @@ def get_program(
     ).first()
     if program is None:
         raise HTTPException(status_code=404, detail="Program not found")
-    is_enrolled = False
+    enrollment = None
     if current_user is not None:
-        is_enrolled = db.query(UserProgram.id).filter(
+        enrollment = db.query(UserProgram).filter(
             UserProgram.user_id == current_user.id,
             UserProgram.program_id == program.id,
-        ).first() is not None
-    return program_to_read(
+        ).first()
+    result = program_to_read(
         db,
         program,
         current_user=current_user,
-        is_enrolled=is_enrolled,
+        enrollment=enrollment,
     )
+    if enrollment is not None:
+        db.commit()
+    return result
 
 
 @router.get("/me/enrollments", response_model=list[UserProgramRead])
@@ -94,22 +100,25 @@ def list_my_programs(
         UserProgram.user_id == current_user.id,
         Program.is_published.is_(True),
     ).order_by(UserProgram.started_at.desc()).all()
-    return [
+    result = [
         UserProgramRead(
             id=enrollment.id,
             user_id=enrollment.user_id,
             program_id=enrollment.program_id,
             started_at=enrollment.started_at,
-            completed_at=enrollment.completed_at,
             program=program_to_read(
                 db,
                 program,
                 current_user=current_user,
-                is_enrolled=True,
+                enrollment=enrollment,
             ),
+            completed_at=enrollment.completed_at,
         )
         for enrollment, program in rows
     ]
+    if rows:
+        db.commit()
+    return result
 
 
 @router.post("/{program_id}/start", response_model=UserProgramRead)
@@ -139,16 +148,18 @@ def start_program(
         db.commit()
         db.refresh(enrollment)
 
+    program_response = program_to_read(
+        db,
+        program,
+        current_user=current_user,
+        enrollment=enrollment,
+    )
+    db.commit()
     return UserProgramRead(
         id=enrollment.id,
         user_id=enrollment.user_id,
         program_id=enrollment.program_id,
         started_at=enrollment.started_at,
         completed_at=enrollment.completed_at,
-        program=program_to_read(
-            db,
-            program,
-            current_user=current_user,
-            is_enrolled=True,
-        ),
+        program=program_response,
     )

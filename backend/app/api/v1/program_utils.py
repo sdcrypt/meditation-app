@@ -1,10 +1,25 @@
+from datetime import UTC, datetime
+
 from sqlalchemy.orm import Session
 
 from app.models.meditation import Meditation
-from app.models.program import Program, ProgramMeditation
+from app.models.program import Program, ProgramMeditation, UserProgram
 from app.models.session import MeditationSession
 from app.models.user import User
 from app.schemas.program import ProgramMeditationRead, ProgramRead
+
+
+def update_enrollment_completion(
+    enrollment: UserProgram,
+    completed_meditations: int,
+    total_meditations: int,
+) -> None:
+    """Keep a user's program completion date in sync with their progress."""
+    is_complete = total_meditations > 0 and completed_meditations == total_meditations
+    if is_complete and enrollment.completed_at is None:
+        enrollment.completed_at = datetime.now(UTC)
+    elif not is_complete and enrollment.completed_at is not None:
+        enrollment.completed_at = None
 
 
 def program_to_read(
@@ -12,7 +27,7 @@ def program_to_read(
     program: Program,
     *,
     current_user: User | None = None,
-    is_enrolled: bool = False,
+    enrollment: UserProgram | None = None,
 ) -> ProgramRead:
     """Build a program response with meditations in the saved order."""
     rows = db.query(ProgramMeditation, Meditation).join(
@@ -24,6 +39,7 @@ def program_to_read(
     ).order_by(ProgramMeditation.position.asc()).all()
     meditation_ids = [meditation.id for _, meditation in rows]
     completed_ids = set()
+    is_enrolled = enrollment is not None
     if current_user is not None and is_enrolled and meditation_ids:
         completed_ids = {
             item[0]
@@ -35,6 +51,13 @@ def program_to_read(
         }
     total_meditations = len(meditation_ids)
     completed_meditations = len(completed_ids)
+    if enrollment is not None:
+        update_enrollment_completion(
+            enrollment,
+            completed_meditations,
+            total_meditations,
+        )
+        db.flush()
     completion_percent = (
         round((completed_meditations / total_meditations) * 100)
         if total_meditations
@@ -64,6 +87,32 @@ def program_to_read(
             for item, meditation in rows
         ],
     )
+
+
+def sync_user_programs_for_meditation(
+    db: Session,
+    user: User,
+    meditation_id: int,
+) -> None:
+    """Update enrolled programs that contain a just-completed meditation."""
+    rows = db.query(UserProgram, Program).join(
+        Program,
+        Program.id == UserProgram.program_id,
+    ).join(
+        ProgramMeditation,
+        ProgramMeditation.program_id == Program.id,
+    ).filter(
+        UserProgram.user_id == user.id,
+        Program.is_published.is_(True),
+        ProgramMeditation.meditation_id == meditation_id,
+    ).all()
+    for enrollment, program in rows:
+        program_to_read(
+            db,
+            program,
+            current_user=user,
+            enrollment=enrollment,
+        )
 
 
 def replace_program_meditations(

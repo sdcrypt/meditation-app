@@ -7,6 +7,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 
+from app.api.v1.program_utils import sync_user_programs_for_meditation
 from app.core.dependencies import get_current_user, get_optional_user
 from app.db.session import SessionLocal
 from app.models.meditation import Meditation
@@ -280,6 +281,13 @@ def complete_session(
     apply_progress(db, meditation_session, payload, duration_sec)
     meditation_session.last_position_sec = duration_sec
     meditation_session.completed_at = func.now()
+    if current_user is not None:
+        db.flush()
+        sync_user_programs_for_meditation(
+            db,
+            current_user,
+            meditation_session.meditation_id,
+        )
     db.commit()
     db.refresh(meditation_session)
     return meditation_session
