@@ -24,7 +24,7 @@ def program_to_read(
     ).order_by(ProgramMeditation.position.asc()).all()
     meditation_ids = [meditation.id for _, meditation in rows]
     completed_ids = set()
-    if current_user is not None and meditation_ids:
+    if current_user is not None and is_enrolled and meditation_ids:
         completed_ids = {
             item[0]
             for item in db.query(MeditationSession.meditation_id).filter(
