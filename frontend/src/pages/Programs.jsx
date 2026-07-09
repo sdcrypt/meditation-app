@@ -9,7 +9,10 @@ export default function Programs() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`${API_BASE_URL}/programs/?limit=100`, { signal: controller.signal })
+    fetch(`${API_BASE_URL}/programs/?limit=100`, {
+      credentials: "include",
+      signal: controller.signal,
+    })
       .then((response) => {
         if (!response.ok) throw new Error("Unable to load programs.");
         return response.json();

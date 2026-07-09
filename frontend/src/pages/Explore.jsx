@@ -63,7 +63,10 @@ export default function Explore() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`${API_BASE_URL}/programs/?limit=6`, { signal: controller.signal })
+    fetch(`${API_BASE_URL}/programs/?limit=6`, {
+      credentials: "include",
+      signal: controller.signal,
+    })
       .then((response) => response.ok ? response.json() : [])
       .then(setPrograms)
       .catch((requestError) => {

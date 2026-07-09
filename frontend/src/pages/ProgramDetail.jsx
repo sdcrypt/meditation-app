@@ -78,6 +78,9 @@ export default function ProgramDetail() {
     title: program.title,
     artwork_url: program.artwork_url,
   };
+  const totalMeditations = program.total_meditations ?? program.meditations.length;
+  const completedMeditations = program.completed_meditations ?? 0;
+  const completionPercent = program.completion_percent ?? 0;
 
   return (
     <main className="program-detail-page">
@@ -92,10 +95,19 @@ export default function ProgramDetail() {
           <h1>{program.title}</h1>
           <p>{program.description}</p>
           <div className="program-detail-meta">
-            <span>{program.meditations.length} practices</span>
+            <span>{totalMeditations} practices</span>
             <span>{program.level}</span>
             <span>{program.goal || "mindfulness"}</span>
           </div>
+          {program.is_enrolled && (
+            <div className="program-detail-progress">
+              <div>
+                <span>{completedMeditations} of {totalMeditations} completed</span>
+                <strong>{completionPercent}% complete</strong>
+              </div>
+              <i><b style={{ width: `${completionPercent}%` }} /></i>
+            </div>
+          )}
           <button
             className={`program-start-button ${program.is_enrolled ? "is-started" : ""}`}
             onClick={startProgram}

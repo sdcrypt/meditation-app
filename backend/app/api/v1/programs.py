@@ -44,7 +44,12 @@ def list_programs(
             ).all()
         }
     return [
-        program_to_read(db, program, is_enrolled=program.id in enrolled_ids)
+        program_to_read(
+            db,
+            program,
+            current_user=current_user,
+            is_enrolled=program.id in enrolled_ids,
+        )
         for program in programs
     ]
 
@@ -68,7 +73,12 @@ def get_program(
             UserProgram.user_id == current_user.id,
             UserProgram.program_id == program.id,
         ).first() is not None
-    return program_to_read(db, program, is_enrolled=is_enrolled)
+    return program_to_read(
+        db,
+        program,
+        current_user=current_user,
+        is_enrolled=is_enrolled,
+    )
 
 
 @router.get("/me/enrollments", response_model=list[UserProgramRead])
@@ -91,7 +101,12 @@ def list_my_programs(
             program_id=enrollment.program_id,
             started_at=enrollment.started_at,
             completed_at=enrollment.completed_at,
-            program=program_to_read(db, program, is_enrolled=True),
+            program=program_to_read(
+                db,
+                program,
+                current_user=current_user,
+                is_enrolled=True,
+            ),
         )
         for enrollment, program in rows
     ]
@@ -130,5 +145,10 @@ def start_program(
         program_id=enrollment.program_id,
         started_at=enrollment.started_at,
         completed_at=enrollment.completed_at,
-        program=program_to_read(db, program, is_enrolled=True),
+        program=program_to_read(
+            db,
+            program,
+            current_user=current_user,
+            is_enrolled=True,
+        ),
     )

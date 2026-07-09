@@ -61,6 +61,9 @@ class ProgramRead(ProgramBase):
     created_at: datetime
     updated_at: datetime
     is_enrolled: bool = False
+    completed_meditations: int = 0
+    total_meditations: int = 0
+    completion_percent: int = 0
     meditations: list[ProgramMeditationRead] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)

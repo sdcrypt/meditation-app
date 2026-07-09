@@ -10,7 +10,10 @@ const programArtworkMeditation = (program) =>
   };
 
 export default function ProgramCard({ program }) {
-  const count = program.meditations?.length ?? 0;
+  const count = program.total_meditations ?? program.meditations?.length ?? 0;
+  const completed = program.completed_meditations ?? 0;
+  const percent = program.completion_percent ?? 0;
+  const showProgress = program.is_enrolled || completed > 0;
 
   return (
     <Link className="program-card" to={`/programs/${program.id}`}>
@@ -27,6 +30,15 @@ export default function ProgramCard({ program }) {
         <p>{program.goal || "mindfulness"} · {program.level}</p>
         <h3>{program.title}</h3>
         <span>{program.description}</span>
+        {showProgress && (
+          <div className="program-card__progress" aria-label={`${completed} of ${count} completed`}>
+            <div>
+              <small>{completed} of {count} completed</small>
+              <strong>{percent}% complete</strong>
+            </div>
+            <i><b style={{ width: `${percent}%` }} /></i>
+          </div>
+        )}
       </div>
     </Link>
   );
