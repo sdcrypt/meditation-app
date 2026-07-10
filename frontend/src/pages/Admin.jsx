@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { formatDuration } from "../components/MeditationCard";
 import { API_BASE_URL } from "../config";
 import { useAuth } from "../context/AuthContext";
 
@@ -22,7 +23,8 @@ const EMPTY_PROGRAM = {
   level: "beginner",
   goal: "",
   is_published: true,
-  meditation_ids_text: "",
+  meditation_ids: [],
+  meditation_search: "",
 };
 
 const withDraftFields = (meditation) => ({
@@ -37,17 +39,10 @@ const parseTags = (value) =>
 const parseBenefits = (value) =>
   value.split("\n").map((item) => item.trim()).filter(Boolean);
 
-const parseMeditationIds = (value) =>
-  value
-    .split(",")
-    .map((item) => Number(item.trim()))
-    .filter((item) => Number.isInteger(item) && item > 0);
-
 const withProgramDraftFields = (program) => ({
   ...program,
-  meditation_ids_text: (program.meditations ?? [])
-    .map((item) => item.meditation.id)
-    .join(", "),
+  meditation_ids: (program.meditations ?? []).map((item) => item.meditation.id),
+  meditation_search: "",
 });
 
 const getErrorMessage = (payload, fallback) => {
@@ -57,6 +52,128 @@ const getErrorMessage = (payload, fallback) => {
   }
   return fallback;
 };
+
+const moveItem = (items, index, direction) => {
+  const nextIndex = index + direction;
+  if (nextIndex < 0 || nextIndex >= items.length) return items;
+  const updated = [...items];
+  const [item] = updated.splice(index, 1);
+  updated.splice(nextIndex, 0, item);
+  return updated;
+};
+
+function ProgramMeditationPicker({
+  meditations,
+  selectedIds,
+  search,
+  onSearch,
+  onChange,
+}) {
+  const meditationById = new Map(meditations.map((item) => [item.id, item]));
+  const selectedMeditations = selectedIds
+    .map((id) => meditationById.get(id))
+    .filter(Boolean);
+  const normalizedSearch = search.trim().toLowerCase();
+  const searchResults = meditations
+    .filter((meditation) => !selectedIds.includes(meditation.id))
+    .filter((meditation) => {
+      if (!normalizedSearch) return true;
+      return [
+        meditation.title,
+        meditation.category,
+        meditation.teacher_name,
+        meditation.level,
+        String(meditation.id),
+      ].some((value) => value?.toLowerCase().includes(normalizedSearch));
+    })
+    .slice(0, 8);
+
+  return (
+    <div className="admin-program-picker">
+      <div className="admin-program-picker__selected">
+        <div className="admin-program-picker__top">
+          <strong>Program sequence</strong>
+          <span>{selectedMeditations.length} selected</span>
+        </div>
+        {selectedMeditations.length > 0 ? (
+          <div className="admin-program-selected-list">
+            {selectedMeditations.map((meditation, index) => (
+              <div className="admin-program-selected-item" key={meditation.id}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <div>
+                  <strong>{meditation.title}</strong>
+                  <small>
+                    #{meditation.id} · {meditation.category || "Uncategorized"} · {formatDuration(meditation.duration_sec)}
+                    {!meditation.is_published ? " · Draft" : ""}
+                  </small>
+                </div>
+                <div className="admin-program-order-actions">
+                  <button
+                    type="button"
+                    onClick={() => onChange(moveItem(selectedIds, index, -1))}
+                    disabled={index === 0}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onChange(moveItem(selectedIds, index, 1))}
+                    disabled={index === selectedIds.length - 1}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onChange(selectedIds.filter((id) => id !== meditation.id))}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="admin-program-picker__empty">
+            Add meditations below to build the program path.
+          </div>
+        )}
+      </div>
+
+      <div className="admin-program-picker__search">
+        <label className="admin-field">
+          <span>Find meditations</span>
+          <input
+            value={search}
+            onChange={(event) => onSearch(event.target.value)}
+            placeholder="Search by title, category, teacher, or ID"
+          />
+        </label>
+        <div className="admin-program-search-results">
+          {searchResults.length > 0 ? (
+            searchResults.map((meditation) => (
+              <button
+                type="button"
+                onClick={() => onChange([...selectedIds, meditation.id])}
+                className={!meditation.is_published ? "is-draft" : ""}
+                key={meditation.id}
+              >
+                <span>{meditation.title}</span>
+                <small>
+                  #{meditation.id} · {meditation.category || "Uncategorized"} · {meditation.level}
+                  {!meditation.is_published ? " · Draft" : ""}
+                </small>
+              </button>
+            ))
+          ) : (
+            <div className="admin-program-picker__empty">
+              No matching meditations found.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Admin() {
   const { logout } = useAuth();
@@ -126,6 +243,35 @@ export default function Admin() {
     );
   };
 
+  const setNewProgramMeditations = (meditationIds) => {
+    setNewProgram((item) => ({ ...item, meditation_ids: meditationIds }));
+  };
+
+  const setExistingProgramMeditations = (programId, meditationIds) => {
+    setProgramField(programId, "meditation_ids", meditationIds);
+  };
+
+  const validateProgramDraft = (program) => {
+    if (!program.title.trim()) return "Program title is required.";
+    if (program.meditation_ids.length === 0) {
+      return "Choose at least one published meditation for this program.";
+    }
+    const meditationById = new Map(meditations.map((item) => [item.id, item]));
+    const missingIds = program.meditation_ids.filter((id) => !meditationById.has(id));
+    if (missingIds.length > 0) {
+      return `These meditation IDs are no longer available: ${missingIds.join(", ")}.`;
+    }
+    const unpublishedItems = program.meditation_ids
+      .map((id) => meditationById.get(id))
+      .filter((item) => item && !item.is_published);
+    if (unpublishedItems.length > 0) {
+      return `Publish or remove these meditations first: ${unpublishedItems
+        .map((item) => item.title)
+        .join(", ")}.`;
+    }
+    return "";
+  };
+
   const uploadFile = async (id, file, kind) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -173,7 +319,7 @@ export default function Admin() {
     level: program.level.trim(),
     goal: program.goal.trim(),
     is_published: program.is_published,
-    meditation_ids: parseMeditationIds(program.meditation_ids_text),
+    meditation_ids: program.meditation_ids,
   });
 
   const handleCreateMeditation = async (event) => {
@@ -216,6 +362,8 @@ export default function Admin() {
     setPageError("");
     setNotice("");
     try {
+      const validationError = validateProgramDraft(newProgram);
+      if (validationError) throw new Error(validationError);
       const created = await request("/admin/programs/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -271,6 +419,8 @@ export default function Admin() {
     setPageError("");
     setNotice("");
     try {
+      const validationError = validateProgramDraft(program);
+      if (validationError) throw new Error(validationError);
       const updated = await request(`/admin/programs/${program.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -551,7 +701,7 @@ export default function Admin() {
         <section className="admin-library admin-programs">
           <div className="admin-section-title">
             <span>03</span>
-            <div><h2>Programs</h2><p>Create guided paths from ordered meditation IDs.</p></div>
+            <div><h2>Programs</h2><p>Create guided paths from ordered meditation sequences.</p></div>
           </div>
 
           <form className="admin-program-create" onSubmit={handleCreateProgram}>
@@ -590,13 +740,14 @@ export default function Admin() {
                   onChange={(event) => setNewProgram((item) => ({ ...item, artwork_url: event.target.value }))}
                   placeholder="https://…" />
               </label>
-              <label className="admin-field admin-field--wide">
-                <span>Meditation IDs <small>comma separated in order</small></span>
-                <input value={newProgram.meditation_ids_text}
-                  onChange={(event) => setNewProgram((item) => ({ ...item, meditation_ids_text: event.target.value }))}
-                  placeholder={meditations.map((item) => item.id).join(", ")} />
-              </label>
             </div>
+            <ProgramMeditationPicker
+              meditations={meditations}
+              selectedIds={newProgram.meditation_ids}
+              search={newProgram.meditation_search}
+              onSearch={(value) => setNewProgram((item) => ({ ...item, meditation_search: value }))}
+              onChange={setNewProgramMeditations}
+            />
             <div className="admin-card__bottom">
               <div className="admin-publish-controls admin-publish-controls--inline">
                 <label><input type="checkbox" checked={newProgram.is_published}
@@ -641,12 +792,14 @@ export default function Admin() {
                     <input value={program.artwork_url || ""}
                       onChange={(event) => setProgramField(program.id, "artwork_url", event.target.value)} />
                   </label>
-                  <label className="admin-field admin-field--wide">
-                    <span>Meditation IDs <small>comma separated in order</small></span>
-                    <input value={program.meditation_ids_text}
-                      onChange={(event) => setProgramField(program.id, "meditation_ids_text", event.target.value)} />
-                  </label>
                 </div>
+                <ProgramMeditationPicker
+                  meditations={meditations}
+                  selectedIds={program.meditation_ids}
+                  search={program.meditation_search}
+                  onSearch={(value) => setProgramField(program.id, "meditation_search", value)}
+                  onChange={(meditationIds) => setExistingProgramMeditations(program.id, meditationIds)}
+                />
                 <div className="admin-card__bottom">
                   <div className="admin-publish-controls admin-publish-controls--inline">
                     <label><input type="checkbox" checked={program.is_published}

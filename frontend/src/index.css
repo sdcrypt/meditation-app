@@ -637,6 +637,28 @@ button { cursor: pointer; }
 .admin-programs { margin-top:55px; }
 .admin-program-create,.admin-program-card { margin-bottom:18px; padding:22px; border:1px solid #dcded7; border-radius:18px; background:#fbfaf6; }
 .admin-program-list { display:flex; flex-direction:column; gap:16px; }
+.admin-program-picker { display:grid; grid-template-columns:1.15fr .85fr; gap:18px; margin-top:20px; padding:18px; border:1px solid #e1e3dc; border-radius:15px; background:#f6f5ef; }
+.admin-program-picker__selected,.admin-program-picker__search { min-width:0; }
+.admin-program-picker__top { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:12px; }
+.admin-program-picker__top strong { color:#294f47; font-family:"Playfair Display",serif; font-size:18px; font-weight:500; }
+.admin-program-picker__top span { color:#8e9a95; font-size:9px; text-transform:uppercase; letter-spacing:.7px; }
+.admin-program-selected-list,.admin-program-search-results { display:flex; flex-direction:column; gap:9px; }
+.admin-program-selected-item { display:grid; grid-template-columns:36px 1fr auto; align-items:center; gap:11px; padding:10px; border:1px solid #dde1d8; border-radius:12px; background:white; }
+.admin-program-selected-item > span { display:grid; place-items:center; width:30px; height:30px; border-radius:50%; color:#a46655; background:#f1ddd2; font-family:"Playfair Display",serif; font-size:12px; }
+.admin-program-selected-item div { min-width:0; }
+.admin-program-selected-item strong { display:block; overflow:hidden; color:#244a43; font-size:12px; white-space:nowrap; text-overflow:ellipsis; }
+.admin-program-selected-item small { display:block; margin-top:3px; color:#8d9792; font-size:8px; }
+.admin-program-order-actions { display:flex; align-items:center; gap:5px; }
+.admin-program-order-actions button { min-height:28px; padding:0 8px; border:1px solid #d9ddd4; border-radius:999px; color:#5c716a; background:#f5f6f1; font-size:9px; }
+.admin-program-order-actions button:disabled { cursor:not-allowed; opacity:.4; }
+.admin-program-order-actions button:last-child { color:#9b5b4e; background:#f5e5de; }
+.admin-program-search-results { max-height:340px; overflow:auto; padding-right:3px; }
+.admin-program-search-results button { display:flex; align-items:flex-start; justify-content:center; flex-direction:column; min-height:56px; padding:9px 11px; border:1px solid #dfe2da; border-radius:12px; color:#284d46; background:white; text-align:left; }
+.admin-program-search-results button:hover { border-color:#aac2b8; background:#f8faf6; }
+.admin-program-search-results button.is-draft { opacity:.72; }
+.admin-program-search-results span { overflow:hidden; max-width:100%; font-size:11px; font-weight:700; white-space:nowrap; text-overflow:ellipsis; }
+.admin-program-search-results small { margin-top:4px; color:#8c9893; font-size:8px; }
+.admin-program-picker__empty { padding:18px; border:1px dashed #cbd1c8; border-radius:12px; color:#87928d; background:#f0f1eb; font-size:10px; line-height:1.5; }
 .admin-alert--success { color:#225d4f; background:#d9e9dc; }
 .admin-alert--error { color:#863f35; background:#f5d8d1; }
 .admin-create,.admin-library { padding:34px; border:1px solid #dedfd8; border-radius:22px; background:#faf9f4; box-shadow:0 14px 45px rgba(29,65,58,.05); }
@@ -703,6 +725,7 @@ button { cursor: pointer; }
   .category-grid { grid-template-columns:repeat(2,1fr); }
   .ritual__grid { gap:5%; }
   .admin-form-grid,.admin-form-grid--edit { grid-template-columns:repeat(2,1fr); }
+  .admin-program-picker { grid-template-columns:1fr; }
   .admin-card { grid-template-columns:180px 1fr; }
   .admin-card__bottom { grid-template-columns:1fr; }
   .admin-publish-controls--inline { justify-content:flex-start; }
@@ -757,6 +780,9 @@ button { cursor: pointer; }
   .admin-heading h1 { font-size:40px; }
   .admin-create,.admin-library { padding:22px 17px; }
   .admin-form-grid,.admin-form-grid--edit { grid-template-columns:1fr; }
+  .admin-program-picker { padding:14px; }
+  .admin-program-selected-item { grid-template-columns:32px 1fr; }
+  .admin-program-order-actions { grid-column:1/-1; justify-content:flex-end; }
   .admin-field--wide,.admin-field--full { grid-column:auto; }
   .admin-media-row { grid-template-columns:1fr; }
   .admin-card { grid-template-columns:1fr; }
