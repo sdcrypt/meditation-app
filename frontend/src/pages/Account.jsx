@@ -30,6 +30,7 @@ export default function Account() {
   const { preferences, openOnboarding } = usePreferences();
   const [summary, setSummary] = useState(null);
   const [history, setHistory] = useState([]);
+  const [enrolledPrograms, setEnrolledPrograms] = useState([]);
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState("");
   const location = useLocation();
@@ -43,7 +44,7 @@ export default function Account() {
   const fetchDashboard = useCallback(async () => {
     setDashboardError("");
     try {
-      const [summaryResponse, historyResponse] = await Promise.all([
+      const [summaryResponse, historyResponse, programsResponse] = await Promise.all([
         fetch(
           `${API_BASE_URL}/sessions/progress/${DEVICE_ID}?timezone=${encodeURIComponent(timezone)}`,
           { credentials: "include" }
@@ -52,16 +53,22 @@ export default function Account() {
           `${API_BASE_URL}/sessions/history/${DEVICE_ID}?limit=4`,
           { credentials: "include" }
         ),
+        fetch(
+          `${API_BASE_URL}/programs/me/enrollments`,
+          { credentials: "include" }
+        ),
       ]);
-      if (!summaryResponse.ok || !historyResponse.ok) {
+      if (!summaryResponse.ok || !historyResponse.ok || !programsResponse.ok) {
         throw new Error("Unable to load account dashboard.");
       }
-      const [summaryData, historyData] = await Promise.all([
+      const [summaryData, historyData, programsData] = await Promise.all([
         summaryResponse.json(),
         historyResponse.json(),
+        programsResponse.json(),
       ]);
       setSummary(summaryData);
       setHistory(historyData.items ?? []);
+      setEnrolledPrograms(programsData ?? []);
     } catch (error) {
       setDashboardError(error.message);
     } finally {
@@ -94,6 +101,11 @@ export default function Account() {
   const practiceTimeLabel = PRACTICE_TIME_OPTIONS.find(
     (item) => item.id === preferences?.practiceTime
   )?.label;
+
+  const getProgramAction = (program) => {
+    if (program.completion_percent >= 100) return "Review program";
+    return program.completed_meditations > 0 ? "Continue" : "Start path";
+  };
 
   return (
     <main className="account-page">
@@ -222,6 +234,66 @@ export default function Account() {
               </div>
             )}
           </article>
+        </section>
+
+        <section className="account-programs">
+          <div className="account-section-heading">
+            <div>
+              <p className="eyebrow">Guided paths</p>
+              <h2>Your programs</h2>
+            </div>
+            <Link to="/programs">Browse programs</Link>
+          </div>
+          {dashboardLoading ? (
+            <div className="account-saved-empty">Loading your programs…</div>
+          ) : enrolledPrograms.length > 0 ? (
+            <div className="account-program-list">
+              {enrolledPrograms.map((enrollment) => {
+                const program = enrollment.program;
+                const isComplete = Boolean(enrollment.completed_at);
+                return (
+                  <Link
+                    className={`account-program-item ${isComplete ? "is-complete" : ""}`}
+                    to={`/programs/${program.id}`}
+                    key={enrollment.id}
+                  >
+                    <MeditationArtwork
+                      meditation={{
+                        ...(program.meditations?.[0]?.meditation ?? {
+                          id: program.id,
+                          title: program.title,
+                        }),
+                        artwork_url:
+                          program.artwork_url ||
+                          program.meditations?.[0]?.meditation?.artwork_url,
+                      }}
+                    />
+                    <div>
+                      <span>{program.goal || "mindfulness"} · {program.level}</span>
+                      <strong>{program.title}</strong>
+                      <small>
+                        {program.completed_meditations} of {program.total_meditations} completed
+                        {isComplete
+                          ? ` · completed ${new Date(enrollment.completed_at).toLocaleDateString()}`
+                          : ` · started ${new Date(enrollment.started_at).toLocaleDateString()}`}
+                      </small>
+                      <i><b style={{ width: `${program.completion_percent}%` }} /></i>
+                    </div>
+                    <em>
+                      {isComplete ? "✓ Complete" : `${program.completion_percent}%`}
+                    </em>
+                    <b>{getProgramAction(program)} →</b>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="account-saved-empty">
+              <h3>No programs started yet.</h3>
+              <p>Start a guided path and your progress will appear here.</p>
+              <Link to="/programs">Find a program</Link>
+            </div>
+          )}
         </section>
 
         <section className="account-saved">

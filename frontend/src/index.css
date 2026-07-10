@@ -578,7 +578,7 @@ button { cursor: pointer; }
 .account-metrics p { margin:0; color:#85918c; font-size:9px; line-height:1.6; }
 .account-dashboard-grid { display:grid; grid-template-columns:1fr 1.15fr; gap:25px; margin-top:25px; }
 .account-panel { min-width:0; padding:25px; border:1px solid #dedfd8; border-radius:18px; background:#fbfaf6; }
-.account-saved { margin-top:25px; padding:25px; border:1px solid #dedfd8; border-radius:18px; background:#fbfaf6; }
+.account-programs,.account-saved { margin-top:25px; padding:25px; border:1px solid #dedfd8; border-radius:18px; background:#fbfaf6; }
 .account-section-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-bottom:22px; }
 .account-section-heading h2 { margin:0; font-family:"Playfair Display",serif; font-size:30px; font-weight:500; letter-spacing:-1px; }
 .account-section-heading > span,.account-section-heading > a,.account-section-heading > button { color:#8b9691; font-size:9px; text-transform:uppercase; letter-spacing:.7px; }
@@ -597,6 +597,19 @@ button { cursor: pointer; }
 .account-history-item div { min-width:0; }
 .account-history-item strong { display:block; overflow:hidden; margin:4px 0; color:#254d45; font-family:"Playfair Display",serif; font-size:16px; font-weight:500; white-space:nowrap; text-overflow:ellipsis; }
 .account-history-item small { color:#b56b54; font-size:8px; }
+.account-program-list { display:flex; flex-direction:column; gap:12px; }
+.account-program-item { display:grid; grid-template-columns:78px 1fr auto auto; align-items:center; gap:16px; padding:12px 15px 12px 12px; border:1px solid #e1e3dc; border-radius:16px; background:#f7f6f1; transition:transform .2s,box-shadow .2s,border-color .2s; }
+.account-program-item:hover { transform:translateY(-2px); border-color:#cfd9cf; box-shadow:0 12px 28px rgba(25,62,55,.08); }
+.account-program-item.is-complete { border-color:#c7ddcc; background:#f2f8f1; }
+.account-program-item > .meditation-art { width:78px; height:78px; border-radius:14px; }
+.account-program-item > div { min-width:0; }
+.account-program-item span { color:#bd7058; font-size:8px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; }
+.account-program-item strong { display:block; overflow:hidden; margin:5px 0 4px; color:#254d45; font-family:"Playfair Display",serif; font-size:21px; line-height:1.1; font-weight:500; white-space:nowrap; text-overflow:ellipsis; }
+.account-program-item small { display:block; color:#87938d; font-size:9px; }
+.account-program-item i { display:block; overflow:hidden; height:5px; margin-top:10px; border-radius:999px; background:#e4e7e1; }
+.account-program-item i b { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#bd7058,#23584e); }
+.account-program-item em { min-width:72px; padding:7px 9px; border-radius:999px; color:#35685d; background:#dfece1; text-align:center; font-size:9px; font-style:normal; font-weight:700; }
+.account-program-item > b { color:#a46655; font-size:9px; font-weight:700; white-space:nowrap; }
 .account-saved-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:18px; }
 .account-saved-empty { padding:35px 20px; border:1px dashed #cfd4cc; border-radius:15px; color:#7f8c86; background:#f3f4ef; text-align:center; font-size:11px; }
 .account-saved-empty h3 { margin:0 0 7px; font-family:"Playfair Display",serif; color:#254d45; font-size:22px; font-weight:500; }
@@ -836,10 +849,13 @@ button { cursor: pointer; }
   .account-profile-card { width:100%; margin-left:0; }
   .account-metrics,.account-dashboard-grid { grid-template-columns:1fr; }
   .account-metrics article { min-height:125px; }
-  .account-panel,.account-saved { padding:20px; }
+  .account-panel,.account-programs,.account-saved { padding:20px; }
   .account-section-heading { align-items:flex-start; flex-direction:column; }
   .account-history-item { grid-template-columns:56px 1fr; }
   .account-history-item > .meditation-art { width:56px; height:56px; }
+  .account-program-item { grid-template-columns:60px 1fr; gap:12px; padding:10px; }
+  .account-program-item > .meditation-art { width:60px; height:60px; }
+  .account-program-item em,.account-program-item > b { display:none; }
 }
 
 @media (max-width: 430px) {
