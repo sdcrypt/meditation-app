@@ -659,6 +659,9 @@ button { cursor: pointer; }
 .admin-program-search-results span { overflow:hidden; max-width:100%; font-size:11px; font-weight:700; white-space:nowrap; text-overflow:ellipsis; }
 .admin-program-search-results small { margin-top:4px; color:#8c9893; font-size:8px; }
 .admin-program-picker__empty { padding:18px; border:1px dashed #cbd1c8; border-radius:12px; color:#87928d; background:#f0f1eb; font-size:10px; line-height:1.5; }
+.admin-program-artwork-row { display:grid; grid-template-columns:minmax(240px,1fr) 160px; gap:16px; align-items:stretch; margin-top:18px; }
+.admin-program-artwork-row .admin-upload-card { min-height:118px; }
+.admin-program-artwork-preview { width:160px; height:118px; border:1px solid #dfe2da; border-radius:13px; object-fit:cover; background:#e2e8df; }
 .admin-alert--success { color:#225d4f; background:#d9e9dc; }
 .admin-alert--error { color:#863f35; background:#f5d8d1; }
 .admin-create,.admin-library { padding:34px; border:1px solid #dedfd8; border-radius:22px; background:#faf9f4; box-shadow:0 14px 45px rgba(29,65,58,.05); }
@@ -783,6 +786,8 @@ button { cursor: pointer; }
   .admin-program-picker { padding:14px; }
   .admin-program-selected-item { grid-template-columns:32px 1fr; }
   .admin-program-order-actions { grid-column:1/-1; justify-content:flex-end; }
+  .admin-program-artwork-row { grid-template-columns:1fr; }
+  .admin-program-artwork-preview { width:100%; height:180px; }
   .admin-field--wide,.admin-field--full { grid-column:auto; }
   .admin-media-row { grid-template-columns:1fr; }
   .admin-card { grid-template-columns:1fr; }

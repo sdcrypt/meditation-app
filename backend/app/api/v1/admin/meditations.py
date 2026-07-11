@@ -130,7 +130,7 @@ def upload_artwork(
         file.file,
         file.filename or "meditation-artwork",
         file.content_type,
-        prefix="artwork",
+        prefix="artwork/meditations",
     )
     db.commit()
     db.refresh(meditation)

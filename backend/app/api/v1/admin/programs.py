@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 
@@ -7,8 +7,11 @@ from app.core.dependencies import require_admin
 from app.db.session import SessionLocal
 from app.models.program import Program, ProgramMeditation
 from app.schemas.program import ProgramCreate, ProgramRead, ProgramUpdate
+from app.services.s3_service import S3Service
 
 router = APIRouter()
+ALLOWED_ARTWORK_TYPES = {"image/jpeg", "image/png", "image/webp", "image/avif"}
+MAX_ARTWORK_BYTES = 10 * 1024 * 1024
 
 
 def get_db():
@@ -76,6 +79,49 @@ def update_program(
     if meditation_ids is not None:
         replace_program_meditations(db, program, meditation_ids)
 
+    db.commit()
+    db.refresh(program)
+    return program_to_read(db, program)
+
+
+@router.post(
+    "/{program_id}/upload-artwork",
+    response_model=ProgramRead,
+    dependencies=[Depends(require_admin)],
+)
+def upload_program_artwork(
+    program_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """Upload artwork for a program and save its public URL."""
+    program = db.query(Program).filter(Program.id == program_id).first()
+    if program is None:
+        raise HTTPException(status_code=404, detail="Program not found")
+
+    if file.content_type not in ALLOWED_ARTWORK_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Artwork must be a JPEG, PNG, WebP, or AVIF image",
+        )
+
+    file.file.seek(0, 2)
+    file_size = file.file.tell()
+    file.file.seek(0)
+    if file_size > MAX_ARTWORK_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail="Artwork must be 10 MB or smaller",
+        )
+
+    s3 = S3Service()
+    program.artwork_url = s3.upload_file(
+        file.file,
+        file.filename or "program-artwork",
+        file.content_type,
+        prefix="artwork/programs",
+    )
+    program.updated_at = func.now()
     db.commit()
     db.refresh(program)
     return program_to_read(db, program)

@@ -183,6 +183,7 @@ export default function Admin() {
   const [newProgram, setNewProgram] = useState(EMPTY_PROGRAM);
   const [newAudioFile, setNewAudioFile] = useState(null);
   const [newArtworkFile, setNewArtworkFile] = useState(null);
+  const [newProgramArtworkFile, setNewProgramArtworkFile] = useState(null);
   const [creating, setCreating] = useState(false);
   const [savingId, setSavingId] = useState(null);
   const [uploadingKey, setUploadingKey] = useState(null);
@@ -299,6 +300,33 @@ export default function Admin() {
     }
   };
 
+  const uploadProgramArtwork = async (id, file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return request(`/admin/programs/${id}/upload-artwork`, {
+      method: "POST",
+      body: formData,
+    });
+  };
+
+  const uploadExistingProgramArtwork = async (program, file) => {
+    if (!file) return;
+    const key = `program-artwork-${program.id}`;
+    setUploadingKey(key);
+    setNotice("");
+    try {
+      const updated = await uploadProgramArtwork(program.id, file);
+      setPrograms((current) =>
+        current.map((item) => item.id === program.id ? withProgramDraftFields(updated) : item)
+      );
+      setNotice("Program artwork uploaded successfully.");
+    } catch (error) {
+      setPageError(error.message);
+    } finally {
+      setUploadingKey(null);
+    }
+  };
+
   const meditationPayload = (meditation) => ({
     title: meditation.title.trim(),
     category: meditation.category.trim(),
@@ -364,13 +392,17 @@ export default function Admin() {
     try {
       const validationError = validateProgramDraft(newProgram);
       if (validationError) throw new Error(validationError);
-      const created = await request("/admin/programs/", {
+      let created = await request("/admin/programs/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(programPayload(newProgram)),
       });
+      if (newProgramArtworkFile) {
+        created = await uploadProgramArtwork(created.id, newProgramArtworkFile);
+      }
       setPrograms((current) => [withProgramDraftFields(created), ...current]);
       setNewProgram(EMPTY_PROGRAM);
+      setNewProgramArtworkFile(null);
       setNotice("Program created successfully.");
     } catch (error) {
       setPageError(error.message);
@@ -748,6 +780,18 @@ export default function Admin() {
               onSearch={(value) => setNewProgram((item) => ({ ...item, meditation_search: value }))}
               onChange={setNewProgramMeditations}
             />
+            <div className="admin-program-artwork-row">
+              <label className="admin-upload-card">
+                <strong>Program artwork</strong>
+                <span>JPEG, PNG, WebP or AVIF · max 10 MB</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/avif"
+                  onChange={(event) => setNewProgramArtworkFile(event.target.files?.[0] ?? null)}
+                />
+                <b>{newProgramArtworkFile?.name || "Choose image"}</b>
+              </label>
+            </div>
             <div className="admin-card__bottom">
               <div className="admin-publish-controls admin-publish-controls--inline">
                 <label><input type="checkbox" checked={newProgram.is_published}
@@ -800,6 +844,29 @@ export default function Admin() {
                   onSearch={(value) => setProgramField(program.id, "meditation_search", value)}
                   onChange={(meditationIds) => setExistingProgramMeditations(program.id, meditationIds)}
                 />
+                <div className="admin-program-artwork-row">
+                  <label className="admin-upload-card">
+                    <strong>Program artwork</strong>
+                    <span>{program.artwork_url ? "Replace current image" : "Upload a program cover image"}</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/avif"
+                      disabled={Boolean(uploadingKey)}
+                      onChange={(event) => {
+                        uploadExistingProgramArtwork(program, event.target.files?.[0]);
+                        event.target.value = "";
+                      }}
+                    />
+                    <b>
+                      {uploadingKey === `program-artwork-${program.id}`
+                        ? "Uploading…"
+                        : "Choose image"}
+                    </b>
+                  </label>
+                  {program.artwork_url && (
+                    <img className="admin-program-artwork-preview" src={program.artwork_url} alt="" />
+                  )}
+                </div>
                 <div className="admin-card__bottom">
                   <div className="admin-publish-controls admin-publish-controls--inline">
                     <label><input type="checkbox" checked={program.is_published}
