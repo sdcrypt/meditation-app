@@ -1,4 +1,11 @@
+import csv
+from io import BytesIO, TextIOWrapper
+import mimetypes
+from pathlib import PurePath
+import zipfile
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import require_admin
@@ -14,6 +21,20 @@ logger = get_logger(__name__)
 router = APIRouter()
 ALLOWED_ARTWORK_TYPES = {"image/jpeg", "image/png", "image/webp", "image/avif"}
 MAX_ARTWORK_BYTES = 10 * 1024 * 1024
+CSV_COLUMNS = {
+    "title",
+    "category",
+    "duration_sec",
+    "level",
+    "description",
+    "teacher_name",
+    "tags",
+    "benefits",
+    "is_featured",
+    "is_published",
+    "audio_filename",
+    "artwork_filename",
+}
 
 
 def get_db():
@@ -52,6 +73,199 @@ def create_meditation(
     db.refresh(meditation)
     logger.info("Meditation created successfully: id=%s, title=%s", meditation.id, meditation.title)
     return meditation
+
+
+def parse_bool(value: str | None, default: bool) -> bool:
+    """Read common yes/no values from CSV text."""
+    if value is None or value.strip() == "":
+        return default
+    normalized = value.strip().lower()
+    if normalized in {"true", "yes", "y", "1"}:
+        return True
+    if normalized in {"false", "no", "n", "0"}:
+        return False
+    raise ValueError(f"Invalid boolean value: {value}")
+
+
+def split_csv_list(value: str | None, separator: str) -> list[str]:
+    """Split a simple CSV cell into a clean list."""
+    if not value:
+        return []
+    return [item.strip() for item in value.split(separator) if item.strip()]
+
+
+def normalize_zip_name(filename: str | None) -> str:
+    """Normalize a media filename so it can be matched safely in a ZIP."""
+    if not filename:
+        return ""
+    return str(PurePath(filename.replace("\\", "/")))
+
+
+def read_media_zip(media_zip: UploadFile | None) -> tuple[dict[str, bytes], list[str]]:
+    """Read safe audio and artwork files from an optional ZIP upload."""
+    if media_zip is None:
+        return {}, []
+
+    warnings = []
+    files: dict[str, bytes] = {}
+    try:
+        archive = zipfile.ZipFile(BytesIO(media_zip.file.read()))
+    except zipfile.BadZipFile:
+        raise HTTPException(status_code=400, detail="media_zip must be a valid ZIP file")
+
+    for info in archive.infolist():
+        raw_name = info.filename.replace("\\", "/")
+        normalized_name = normalize_zip_name(raw_name)
+        if info.is_dir() or normalized_name.startswith("../") or "/../" in normalized_name:
+            continue
+        if not (
+            normalized_name.startswith("audio/")
+            or normalized_name.startswith("artwork/")
+        ):
+            warnings.append(f"Ignored ZIP file outside audio/ or artwork/: {raw_name}")
+            continue
+        files[normalized_name] = archive.read(info)
+    return files, warnings
+
+
+def find_media_file(files: dict[str, bytes], folder: str, filename: str | None) -> tuple[str, bytes] | None:
+    """Find a media file by its folder and CSV filename."""
+    safe_name = PurePath((filename or "").replace("\\", "/")).name
+    if not safe_name:
+        return None
+    key = f"{folder}/{safe_name}"
+    if key in files:
+        return key, files[key]
+    normalized = normalize_zip_name(filename)
+    if normalized in files and normalized.startswith(f"{folder}/"):
+        return normalized, files[normalized]
+    return None
+
+
+def build_meditation_payload(row: dict[str, str | None]) -> MeditationCreate:
+    """Convert one CSV row into validated meditation data."""
+    return MeditationCreate(
+        title=(row.get("title") or "").strip(),
+        category=(row.get("category") or "").strip(),
+        duration_sec=int((row.get("duration_sec") or "").strip()),
+        level=(row.get("level") or "").strip(),
+        audio_url=None,
+        description=(row.get("description") or "").strip(),
+        teacher_name=(row.get("teacher_name") or "").strip(),
+        artwork_url=None,
+        tags=split_csv_list(row.get("tags"), ","),
+        benefits=split_csv_list(row.get("benefits"), "|"),
+        is_featured=parse_bool(row.get("is_featured"), False),
+        is_published=parse_bool(row.get("is_published"), True),
+    )
+
+
+@router.post(
+    "/bulk-import",
+    dependencies=[Depends(require_admin)],
+)
+def bulk_import_meditations(
+    csv_file: UploadFile = File(...),
+    media_zip: UploadFile | None = File(default=None),
+    db: Session = Depends(get_db),
+):
+    """Create or update meditations from a CSV file and optional media ZIP."""
+    filename = (csv_file.filename or "").lower()
+    if not filename.endswith(".csv") and csv_file.content_type not in {
+        "text/csv",
+        "application/csv",
+        "application/vnd.ms-excel",
+        "text/plain",
+        "application/octet-stream",
+    }:
+        raise HTTPException(status_code=400, detail="csv_file must be a CSV file")
+
+    media_files, warnings = read_media_zip(media_zip)
+    reader = csv.DictReader(TextIOWrapper(csv_file.file, encoding="utf-8-sig"))
+    missing_columns = {"title", "category", "duration_sec", "level"} - set(reader.fieldnames or [])
+    if missing_columns:
+        raise HTTPException(
+            status_code=400,
+            detail=f"CSV is missing required columns: {', '.join(sorted(missing_columns))}",
+        )
+
+    created = 0
+    updated = 0
+    skipped = 0
+    errors: list[str] = []
+    s3 = S3Service()
+
+    for row_number, row in enumerate(reader, start=2):
+        try:
+            payload = build_meditation_payload(row)
+        except (ValueError, ValidationError) as error:
+            skipped += 1
+            errors.append(f"Row {row_number}: {error}")
+            continue
+
+        meditation = db.query(Meditation).filter(
+            Meditation.title == payload.title
+        ).first()
+        is_new = meditation is None
+        if meditation is None:
+            meditation = Meditation()
+            db.add(meditation)
+
+        for field, value in payload.model_dump().items():
+            if field in {"audio_url", "artwork_url"} and value is None:
+                continue
+            setattr(meditation, field, value)
+
+        audio_filename = row.get("audio_filename")
+        audio_file = find_media_file(media_files, "audio", audio_filename)
+        if audio_filename and audio_file is None:
+            warnings.append(f"Row {row_number}: audio file not found: {audio_filename}")
+        elif audio_file is not None:
+            audio_key, audio_bytes = audio_file
+            content_type = mimetypes.guess_type(audio_key)[0] or "application/octet-stream"
+            if not content_type.startswith("audio/"):
+                warnings.append(f"Row {row_number}: skipped non-audio file: {audio_filename}")
+            else:
+                meditation.audio_url = s3.upload_file(
+                    BytesIO(audio_bytes),
+                    PurePath(audio_key).name,
+                    content_type,
+                    prefix="audio",
+                )
+
+        artwork_filename = row.get("artwork_filename")
+        artwork_file = find_media_file(media_files, "artwork", artwork_filename)
+        if artwork_filename and artwork_file is None:
+            warnings.append(f"Row {row_number}: artwork file not found: {artwork_filename}")
+        elif artwork_file is not None:
+            artwork_key, artwork_bytes = artwork_file
+            content_type = mimetypes.guess_type(artwork_key)[0] or "application/octet-stream"
+            if content_type not in ALLOWED_ARTWORK_TYPES:
+                warnings.append(f"Row {row_number}: skipped unsupported artwork type: {artwork_filename}")
+            elif len(artwork_bytes) > MAX_ARTWORK_BYTES:
+                warnings.append(f"Row {row_number}: skipped artwork over 10 MB: {artwork_filename}")
+            else:
+                meditation.artwork_url = s3.upload_file(
+                    BytesIO(artwork_bytes),
+                    PurePath(artwork_key).name,
+                    content_type,
+                    prefix="artwork/meditations",
+                )
+
+        if is_new:
+            created += 1
+        else:
+            updated += 1
+
+    db.commit()
+    return {
+        "created": created,
+        "updated": updated,
+        "skipped": skipped,
+        "warnings": warnings,
+        "errors": errors,
+        "expected_columns": sorted(CSV_COLUMNS),
+    }
 
 
 @router.post(

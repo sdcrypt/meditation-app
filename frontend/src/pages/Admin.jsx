@@ -184,6 +184,10 @@ export default function Admin() {
   const [newAudioFile, setNewAudioFile] = useState(null);
   const [newArtworkFile, setNewArtworkFile] = useState(null);
   const [newProgramArtworkFile, setNewProgramArtworkFile] = useState(null);
+  const [bulkCsvFile, setBulkCsvFile] = useState(null);
+  const [bulkZipFile, setBulkZipFile] = useState(null);
+  const [bulkImportResult, setBulkImportResult] = useState(null);
+  const [bulkImporting, setBulkImporting] = useState(false);
   const [creating, setCreating] = useState(false);
   const [savingId, setSavingId] = useState(null);
   const [uploadingKey, setUploadingKey] = useState(null);
@@ -446,6 +450,37 @@ export default function Admin() {
     }
   };
 
+  const handleBulkImport = async (event) => {
+    event.preventDefault();
+    if (!bulkCsvFile) {
+      setPageError("Choose a CSV file before importing.");
+      return;
+    }
+    const formData = new FormData();
+    formData.append("csv_file", bulkCsvFile);
+    if (bulkZipFile) formData.append("media_zip", bulkZipFile);
+
+    setBulkImporting(true);
+    setPageError("");
+    setNotice("");
+    setBulkImportResult(null);
+    try {
+      const result = await request("/admin/meditations/bulk-import", {
+        method: "POST",
+        body: formData,
+      });
+      setBulkImportResult(result);
+      setNotice(
+        `Bulk import finished: ${result.created} created, ${result.updated} updated, ${result.skipped} skipped.`
+      );
+      await fetchMeditations();
+    } catch (error) {
+      setPageError(error.message);
+    } finally {
+      setBulkImporting(false);
+    }
+  };
+
   const updateProgram = async (program) => {
     setSavingId(`program-${program.id}`);
     setPageError("");
@@ -510,6 +545,81 @@ export default function Admin() {
             <button onClick={() => { setPageError(""); setNotice(""); }} aria-label="Dismiss">×</button>
           </div>
         )}
+
+        <section className="admin-create admin-bulk-import">
+          <div className="admin-section-title">
+            <span>00</span>
+            <div>
+              <h2>Bulk import meditations</h2>
+              <p>Upload a CSV and optional ZIP containing audio/ and artwork/ folders.</p>
+            </div>
+          </div>
+          <form onSubmit={handleBulkImport}>
+            <div className="admin-media-row admin-media-row--bulk">
+              <label className="admin-upload-card">
+                <strong>CSV file</strong>
+                <span>Required · meditations.csv</span>
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(event) => setBulkCsvFile(event.target.files?.[0] ?? null)}
+                />
+                <b>{bulkCsvFile?.name || "Choose CSV"}</b>
+              </label>
+              <label className="admin-upload-card">
+                <strong>Media ZIP</strong>
+                <span>Optional · audio/ and artwork/ folders</span>
+                <input
+                  type="file"
+                  accept=".zip,application/zip"
+                  onChange={(event) => setBulkZipFile(event.target.files?.[0] ?? null)}
+                />
+                <b>{bulkZipFile?.name || "Choose ZIP"}</b>
+              </label>
+              <div className="admin-bulk-help">
+                <strong>CSV columns</strong>
+                <p>title, category, duration_sec, level, description, teacher_name, tags, benefits, is_featured, is_published, audio_filename, artwork_filename</p>
+                <small>Tags use commas. Benefits use | between items.</small>
+              </div>
+            </div>
+            <button className="admin-primary-button" type="submit" disabled={bulkImporting}>
+              {bulkImporting ? "Importing…" : "Import meditations"}
+            </button>
+          </form>
+          {bulkImportResult && (
+            <div className="admin-import-result">
+              <div className="admin-import-counts">
+                <span><strong>{bulkImportResult.created}</strong> Created</span>
+                <span><strong>{bulkImportResult.updated}</strong> Updated</span>
+                <span><strong>{bulkImportResult.skipped}</strong> Skipped</span>
+              </div>
+              {(bulkImportResult.warnings?.length > 0 || bulkImportResult.errors?.length > 0) && (
+                <div className="admin-import-messages">
+                  {bulkImportResult.warnings?.length > 0 && (
+                    <div>
+                      <strong>Warnings</strong>
+                      <ul>
+                        {bulkImportResult.warnings.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {bulkImportResult.errors?.length > 0 && (
+                    <div>
+                      <strong>Errors</strong>
+                      <ul>
+                        {bulkImportResult.errors.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
 
         <section className="admin-create">
           <div className="admin-section-title">
