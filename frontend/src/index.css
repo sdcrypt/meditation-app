@@ -671,6 +671,7 @@ button { cursor: pointer; }
 .admin-section-title > span { display:grid; place-items:center; width:30px; height:30px; border-radius:50%; color:#b76b54; background:#f0d9cf; font-family:"Playfair Display",serif; font-size:10px; }
 .admin-section-title h2 { margin:0 0 4px; font-family:"Playfair Display",serif; font-size:25px; font-weight:500; }
 .admin-section-title p { margin:0; color:#84908b; font-size:10px; }
+.admin-template-button { margin-left:auto; min-height:36px; padding:0 14px; border:1px solid #d6c4b8; border-radius:999px; color:#9a5e48; background:#f3e4dc; font-size:9px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; }
 .admin-form-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:17px; }
 .admin-form-grid--edit { grid-template-columns:repeat(4,1fr); }
 .admin-field { display:flex; flex-direction:column; gap:7px; }
@@ -796,6 +797,8 @@ button { cursor: pointer; }
   .admin-shell { width:min(100% - 28px,1180px); }
   .admin-heading h1 { font-size:40px; }
   .admin-create,.admin-library { padding:22px 17px; }
+  .admin-section-title { flex-wrap:wrap; }
+  .admin-template-button { width:100%; margin-left:44px; }
   .admin-form-grid,.admin-form-grid--edit { grid-template-columns:1fr; }
   .admin-program-picker { padding:14px; }
   .admin-program-selected-item { grid-template-columns:32px 1fr; }

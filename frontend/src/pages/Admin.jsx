@@ -27,6 +27,15 @@ const EMPTY_PROGRAM = {
   meditation_search: "",
 };
 
+const MEDITATION_CSV_TEMPLATE = `title,category,duration_sec,level,description,teacher_name,tags,benefits,is_featured,is_published,audio_filename,artwork_filename
+Morning Calm,Calm,600,beginner,A gentle morning practice,Still Guide,"calm,morning,breath","Builds focus|Reduces stress",true,true,morning-calm.mp3,morning-calm.png
+`;
+
+const PROGRAM_CSV_TEMPLATE = `title,description,goal,level,is_published,artwork_filename,meditation_ids,meditation_titles
+7 Days of Calm,A gentle first-week path for building a steady daily pause,stress,beginner,true,7-days-calm.png,3|4|5,
+Sleep Reset,A soothing evening sequence for deeper rest,sleep,all levels,true,sleep-reset.png,,Morning Calm|Sleep Reset Intro
+`;
+
 const withDraftFields = (meditation) => ({
   ...meditation,
   tags_text: (meditation.tags ?? []).join(", "),
@@ -188,6 +197,10 @@ export default function Admin() {
   const [bulkZipFile, setBulkZipFile] = useState(null);
   const [bulkImportResult, setBulkImportResult] = useState(null);
   const [bulkImporting, setBulkImporting] = useState(false);
+  const [programBulkCsvFile, setProgramBulkCsvFile] = useState(null);
+  const [programBulkZipFile, setProgramBulkZipFile] = useState(null);
+  const [programBulkImportResult, setProgramBulkImportResult] = useState(null);
+  const [programBulkImporting, setProgramBulkImporting] = useState(false);
   const [creating, setCreating] = useState(false);
   const [savingId, setSavingId] = useState(null);
   const [uploadingKey, setUploadingKey] = useState(null);
@@ -481,6 +494,49 @@ export default function Admin() {
     }
   };
 
+  const downloadCsvTemplate = (filename, content) => {
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleProgramBulkImport = async (event) => {
+    event.preventDefault();
+    if (!programBulkCsvFile) {
+      setPageError("Choose a program CSV file before importing.");
+      return;
+    }
+    const formData = new FormData();
+    formData.append("csv_file", programBulkCsvFile);
+    if (programBulkZipFile) formData.append("artwork_zip", programBulkZipFile);
+
+    setProgramBulkImporting(true);
+    setPageError("");
+    setNotice("");
+    setProgramBulkImportResult(null);
+    try {
+      const result = await request("/admin/programs/bulk-import", {
+        method: "POST",
+        body: formData,
+      });
+      setProgramBulkImportResult(result);
+      setNotice(
+        `Program import finished: ${result.created} created, ${result.updated} updated, ${result.skipped} skipped.`
+      );
+      await fetchPrograms();
+    } catch (error) {
+      setPageError(error.message);
+    } finally {
+      setProgramBulkImporting(false);
+    }
+  };
+
   const updateProgram = async (program) => {
     setSavingId(`program-${program.id}`);
     setPageError("");
@@ -553,6 +609,13 @@ export default function Admin() {
               <h2>Bulk import meditations</h2>
               <p>Upload a CSV and optional ZIP containing audio/ and artwork/ folders.</p>
             </div>
+            <button
+              className="admin-template-button"
+              type="button"
+              onClick={() => downloadCsvTemplate("meditations-template.csv", MEDITATION_CSV_TEMPLATE)}
+            >
+              Download CSV template
+            </button>
           </div>
           <form onSubmit={handleBulkImport}>
             <div className="admin-media-row admin-media-row--bulk">
@@ -610,6 +673,88 @@ export default function Admin() {
                       <strong>Errors</strong>
                       <ul>
                         {bulkImportResult.errors.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
+        <section className="admin-create admin-bulk-import">
+          <div className="admin-section-title">
+            <span>00B</span>
+            <div>
+              <h2>Bulk import programs</h2>
+              <p>Upload program rows and optional artwork ZIP. Use | to order meditation IDs or titles.</p>
+            </div>
+            <button
+              className="admin-template-button"
+              type="button"
+              onClick={() => downloadCsvTemplate("programs-template.csv", PROGRAM_CSV_TEMPLATE)}
+            >
+              Download CSV template
+            </button>
+          </div>
+          <form onSubmit={handleProgramBulkImport}>
+            <div className="admin-media-row admin-media-row--bulk">
+              <label className="admin-upload-card">
+                <strong>Program CSV</strong>
+                <span>Required · programs.csv</span>
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(event) => setProgramBulkCsvFile(event.target.files?.[0] ?? null)}
+                />
+                <b>{programBulkCsvFile?.name || "Choose CSV"}</b>
+              </label>
+              <label className="admin-upload-card">
+                <strong>Artwork ZIP</strong>
+                <span>Optional · artwork/ folder</span>
+                <input
+                  type="file"
+                  accept=".zip,application/zip"
+                  onChange={(event) => setProgramBulkZipFile(event.target.files?.[0] ?? null)}
+                />
+                <b>{programBulkZipFile?.name || "Choose ZIP"}</b>
+              </label>
+              <div className="admin-bulk-help">
+                <strong>Program CSV columns</strong>
+                <p>title, description, goal, level, is_published, artwork_filename, meditation_ids, meditation_titles</p>
+                <small>Use meditation_ids like 3|4|5 or exact meditation_titles like Morning Calm|Sleep Intro.</small>
+              </div>
+            </div>
+            <button className="admin-primary-button" type="submit" disabled={programBulkImporting}>
+              {programBulkImporting ? "Importing…" : "Import programs"}
+            </button>
+          </form>
+          {programBulkImportResult && (
+            <div className="admin-import-result">
+              <div className="admin-import-counts">
+                <span><strong>{programBulkImportResult.created}</strong> Created</span>
+                <span><strong>{programBulkImportResult.updated}</strong> Updated</span>
+                <span><strong>{programBulkImportResult.skipped}</strong> Skipped</span>
+              </div>
+              {(programBulkImportResult.warnings?.length > 0 || programBulkImportResult.errors?.length > 0) && (
+                <div className="admin-import-messages">
+                  {programBulkImportResult.warnings?.length > 0 && (
+                    <div>
+                      <strong>Warnings</strong>
+                      <ul>
+                        {programBulkImportResult.warnings.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {programBulkImportResult.errors?.length > 0 && (
+                    <div>
+                      <strong>Errors</strong>
+                      <ul>
+                        {programBulkImportResult.errors.map((item) => (
                           <li key={item}>{item}</li>
                         ))}
                       </ul>
