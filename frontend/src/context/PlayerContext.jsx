@@ -10,6 +10,7 @@ import { API_BASE_URL, DEVICE_ID } from "../config";
 
 const PlayerContext = createContext(null);
 const CURRENT_KEY = "still_current_meditation";
+const CURRENT_PROGRAM_KEY = "still_current_program";
 const PROGRESS_KEY = "still_meditation_progress";
 const VOLUME_KEY = "still_player_volume";
 const SPEED_KEY = "still_player_speed";
@@ -29,6 +30,9 @@ export function PlayerProvider({ children }) {
   const [currentMeditation, setCurrentMeditation] = useState(() =>
     readJson(CURRENT_KEY, null)
   );
+  const [currentProgramId, setCurrentProgramId] = useState(() =>
+    readJson(CURRENT_PROGRAM_KEY, null)
+  );
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -42,6 +46,7 @@ export function PlayerProvider({ children }) {
 
   const audioRef = useRef(null);
   const currentMeditationRef = useRef(currentMeditation);
+  const currentProgramIdRef = useRef(currentProgramId);
   const sessionIdRef = useRef(null);
   const sessionPromiseRef = useRef(null);
   const listenedSecondsRef = useRef(0);
@@ -53,22 +58,32 @@ export function PlayerProvider({ children }) {
     currentMeditationRef.current = currentMeditation;
   }, [currentMeditation]);
 
-  const getProgress = useCallback((meditationId) => {
-    const progress = readJson(PROGRESS_KEY, {});
-    return Number(progress[meditationId]) || 0;
-  }, []);
+  useEffect(() => {
+    currentProgramIdRef.current = currentProgramId;
+  }, [currentProgramId]);
 
-  const saveProgress = useCallback((meditationId, position) => {
-    const progress = readJson(PROGRESS_KEY, {});
-    progress[meditationId] = Math.max(0, Math.floor(position));
-    localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
-  }, []);
+  const progressKey = useCallback(
+    (meditationId, programId = currentProgramIdRef.current) =>
+      `${programId || "standalone"}:${meditationId}`,
+    []
+  );
 
-  const clearProgress = useCallback((meditationId) => {
+  const getProgress = useCallback((meditationId, programId) => {
     const progress = readJson(PROGRESS_KEY, {});
-    delete progress[meditationId];
+    return Number(progress[progressKey(meditationId, programId)]) || 0;
+  }, [progressKey]);
+
+  const saveProgress = useCallback((meditationId, position, programId) => {
+    const progress = readJson(PROGRESS_KEY, {});
+    progress[progressKey(meditationId, programId)] = Math.max(0, Math.floor(position));
     localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
-  }, []);
+  }, [progressKey]);
+
+  const clearProgress = useCallback((meditationId, programId) => {
+    const progress = readJson(PROGRESS_KEY, {});
+    delete progress[progressKey(meditationId, programId)];
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+  }, [progressKey]);
 
   const accountListeningTime = useCallback(() => {
     if (lastAccountingAtRef.current === null) return;
@@ -83,6 +98,7 @@ export function PlayerProvider({ children }) {
     if (sessionPromiseRef.current) return sessionPromiseRef.current;
 
     const meditation = currentMeditationRef.current;
+    const programId = currentProgramIdRef.current;
     if (!meditation?.id || !meditation.audio_url) return null;
 
     sessionPromiseRef.current = fetch(`${API_BASE_URL}/sessions/start`, {
@@ -92,6 +108,7 @@ export function PlayerProvider({ children }) {
       body: JSON.stringify({
         meditation_id: meditation.id,
         device_id: Number(DEVICE_ID),
+        program_id: programId || null,
       }),
     })
       .then(async (response) => {
@@ -101,7 +118,7 @@ export function PlayerProvider({ children }) {
         listenedSecondsRef.current = session.seconds_listened || 0;
 
         const audio = audioRef.current;
-        const localPosition = getProgress(meditation.id);
+        const localPosition = getProgress(meditation.id, programId);
         const resumePosition = Math.max(
           localPosition,
           session.last_position_sec || 0
@@ -174,9 +191,13 @@ export function PlayerProvider({ children }) {
     }
   }, []);
 
-  const playMeditation = useCallback((meditation) => {
+  const playMeditation = useCallback((meditation, options = {}) => {
+    const nextProgramId = options.programId ? Number(options.programId) : null;
     const audio = audioRef.current;
-    if (currentMeditationRef.current?.id === meditation.id) {
+    if (
+      currentMeditationRef.current?.id === meditation.id &&
+      currentProgramIdRef.current === nextProgramId
+    ) {
       togglePlayback();
       return;
     }
@@ -196,8 +217,15 @@ export function PlayerProvider({ children }) {
     setDuration(meditation.duration_sec || 0);
     setIsPlaying(false);
     setCurrentMeditation(meditation);
+    setCurrentProgramId(nextProgramId);
     currentMeditationRef.current = meditation;
+    currentProgramIdRef.current = nextProgramId;
     localStorage.setItem(CURRENT_KEY, JSON.stringify(meditation));
+    if (nextProgramId) {
+      localStorage.setItem(CURRENT_PROGRAM_KEY, JSON.stringify(nextProgramId));
+    } else {
+      localStorage.removeItem(CURRENT_PROGRAM_KEY);
+    }
   }, [accountListeningTime, sendProgress, togglePlayback]);
 
   useEffect(() => {
@@ -249,11 +277,14 @@ export function PlayerProvider({ children }) {
     audio?.pause();
     setCurrentMeditation(null);
     currentMeditationRef.current = null;
+    setCurrentProgramId(null);
+    currentProgramIdRef.current = null;
     setCurrentTime(0);
     setDuration(0);
     setIsPlaying(false);
     sessionIdRef.current = null;
     localStorage.removeItem(CURRENT_KEY);
+    localStorage.removeItem(CURRENT_PROGRAM_KEY);
   }, [accountListeningTime, sendProgress]);
 
   const handlePlay = () => {
@@ -349,6 +380,7 @@ export function PlayerProvider({ children }) {
     <PlayerContext.Provider
       value={{
         currentMeditation,
+        currentProgramId,
         isPlaying,
         currentTime,
         duration,

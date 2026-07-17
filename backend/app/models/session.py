@@ -15,6 +15,12 @@ class MeditationSession(Base):
         nullable=True,
         index=True,
     )
+    program_id = Column(
+        Integer,
+        ForeignKey("programs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     device_id = Column(Integer)
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)

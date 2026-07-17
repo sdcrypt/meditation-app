@@ -71,7 +71,9 @@ export default function ProgramDetail() {
     }
 
     if (program.is_enrolled) {
-      if (!isProgramComplete && nextMeditation) navigate(`/meditations/${nextMeditation.id}`);
+      if (!isProgramComplete && nextMeditation) {
+        navigate(`/meditations/${nextMeditation.id}?program=${program.id}`);
+      }
       return;
     }
 
@@ -85,7 +87,7 @@ export default function ProgramDetail() {
       if (!response.ok) throw new Error("Unable to start this program.");
       const enrollment = await response.json();
       setProgram(enrollment.program);
-      if (nextMeditation) navigate(`/meditations/${nextMeditation.id}`);
+      if (nextMeditation) navigate(`/meditations/${nextMeditation.id}?program=${program.id}`);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -149,7 +151,9 @@ export default function ProgramDetail() {
             return (
             <Link
               className={`program-step ${item.is_completed ? "is-completed" : ""} ${isNextUp ? "is-next" : ""}`}
-              to={`/meditations/${item.meditation.id}`}
+              to={program.is_enrolled
+                ? `/meditations/${item.meditation.id}?program=${program.id}`
+                : `/meditations/${item.meditation.id}`}
               key={`${item.position}-${item.meditation.id}`}
             >
               <span>{item.is_completed ? "✓" : String(item.position).padStart(2, "0")}</span>

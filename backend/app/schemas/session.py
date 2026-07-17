@@ -7,6 +7,7 @@ class SessionStart(BaseModel):
     """Information needed to start listening on one device."""
     meditation_id: int = Field(gt=0)
     device_id: int = Field(gt=0)
+    program_id: int | None = Field(default=None, gt=0)
 
 
 class SessionProgress(BaseModel):
@@ -26,6 +27,7 @@ class SessionRead(BaseModel):
     id: int
     meditation_id: int
     user_id: int | None
+    program_id: int | None
     device_id: int
     started_at: datetime
     completed_at: datetime | None

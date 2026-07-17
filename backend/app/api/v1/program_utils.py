@@ -45,6 +45,7 @@ def program_to_read(
             item[0]
             for item in db.query(MeditationSession.meditation_id).filter(
                 MeditationSession.user_id == current_user.id,
+                MeditationSession.program_id == program.id,
                 MeditationSession.meditation_id.in_(meditation_ids),
                 MeditationSession.completed_at.isnot(None),
             ).distinct().all()
@@ -93,8 +94,11 @@ def sync_user_programs_for_meditation(
     db: Session,
     user: User,
     meditation_id: int,
+    program_id: int | None = None,
 ) -> None:
     """Update enrolled programs that contain a just-completed meditation."""
+    if program_id is None:
+        return
     rows = db.query(UserProgram, Program).join(
         Program,
         Program.id == UserProgram.program_id,
@@ -103,6 +107,7 @@ def sync_user_programs_for_meditation(
         ProgramMeditation.program_id == Program.id,
     ).filter(
         UserProgram.user_id == user.id,
+        UserProgram.program_id == program_id,
         Program.is_published.is_(True),
         ProgramMeditation.meditation_id == meditation_id,
     ).all()

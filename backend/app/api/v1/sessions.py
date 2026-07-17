@@ -11,6 +11,7 @@ from app.api.v1.program_utils import sync_user_programs_for_meditation
 from app.core.dependencies import get_current_user, get_optional_user
 from app.db.session import SessionLocal
 from app.models.meditation import Meditation
+from app.models.program import Program, ProgramMeditation, UserProgram
 from app.models.session import MeditationSession, MeditationSessionActivity
 from app.models.user import User
 from app.schemas.session import (
@@ -106,6 +107,40 @@ def get_meditation_duration(db: Session, meditation_id: int) -> int:
     return duration
 
 
+def validate_program_context(
+    db: Session,
+    payload: SessionStart,
+    current_user: User | None,
+) -> int | None:
+    """Check that a program play belongs to an enrolled user and program."""
+    if payload.program_id is None:
+        return None
+    if current_user is None:
+        raise HTTPException(status_code=401, detail="Login required to play from a program")
+
+    program = db.query(Program.id).filter(
+        Program.id == payload.program_id,
+        Program.is_published.is_(True),
+    ).first()
+    if program is None:
+        raise HTTPException(status_code=404, detail="Program not found")
+
+    enrollment = db.query(UserProgram.id).filter(
+        UserProgram.user_id == current_user.id,
+        UserProgram.program_id == payload.program_id,
+    ).first()
+    if enrollment is None:
+        raise HTTPException(status_code=403, detail="Start this program before playing it")
+
+    program_meditation = db.query(ProgramMeditation.id).filter(
+        ProgramMeditation.program_id == payload.program_id,
+        ProgramMeditation.meditation_id == payload.meditation_id,
+    ).first()
+    if program_meditation is None:
+        raise HTTPException(status_code=400, detail="Meditation is not part of this program")
+    return payload.program_id
+
+
 def apply_progress(
     db: Session,
     meditation_session: MeditationSession,
@@ -194,11 +229,16 @@ def start_session(
         raise HTTPException(status_code=404, detail="Meditation not found")
     if not meditation.audio_url:
         raise HTTPException(status_code=409, detail="Meditation audio is unavailable")
+    program_id = validate_program_context(db, payload, current_user)
 
     existing_query = db.query(MeditationSession).filter(
         MeditationSession.meditation_id == payload.meditation_id,
         MeditationSession.completed_at.is_(None),
     )
+    if program_id is None:
+        existing_query = existing_query.filter(MeditationSession.program_id.is_(None))
+    else:
+        existing_query = existing_query.filter(MeditationSession.program_id == program_id)
     if current_user is not None:
         existing_query = existing_query.filter(
             or_(
@@ -227,6 +267,7 @@ def start_session(
 
     meditation_session = MeditationSession(
         meditation_id=payload.meditation_id,
+        program_id=program_id,
         device_id=payload.device_id,
         user_id=current_user.id if current_user is not None else None,
     )
@@ -287,6 +328,7 @@ def complete_session(
             db,
             current_user,
             meditation_session.meditation_id,
+            meditation_session.program_id,
         )
     db.commit()
     db.refresh(meditation_session)

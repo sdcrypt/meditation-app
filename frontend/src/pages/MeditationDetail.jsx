@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import MeditationArtwork from "../components/MeditationArtwork";
 import { formatDuration, meditationDescription } from "../components/MeditationCard";
 import { API_BASE_URL } from "../config";
@@ -14,6 +14,8 @@ const BackIcon = () => (
 
 export default function MeditationDetail() {
   const { meditationId } = useParams();
+  const [searchParams] = useSearchParams();
+  const programId = searchParams.get("program");
   const [meditation, setMeditation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -106,7 +108,7 @@ export default function MeditationDetail() {
                 </div>
                 <button
                   className="detail-player__button"
-                  onClick={() => playMeditation(meditation)}
+                  onClick={() => playMeditation(meditation, { programId })}
                 >
                   <span>{currentMeditation?.id === meditation.id && isPlaying ? "Ⅱ" : "▶"}</span>
                   {currentMeditation?.id === meditation.id && isPlaying ? "Pause meditation" : "Play meditation"}
