@@ -25,6 +25,10 @@ const Icon = ({ type }) => {
 export default function PersistentPlayer() {
   const {
     currentMeditation,
+    currentProgramId,
+    activeProgram,
+    activeProgramItem,
+    nextProgramMeditation,
     isPlaying,
     currentTime,
     duration,
@@ -36,6 +40,7 @@ export default function PersistentPlayer() {
     skip,
     setVolume,
     setPlaybackRate,
+    playNextProgramMeditation,
     closePlayer,
   } = usePlayer();
   const [mobileExpanded, setMobileExpanded] = useState(false);
@@ -44,9 +49,15 @@ export default function PersistentPlayer() {
 
   const remaining = Math.max(0, duration - currentTime);
   const progress = duration ? (currentTime / duration) * 100 : 0;
+  const meditationLink = currentProgramId
+    ? `/meditations/${currentMeditation.id}?program=${currentProgramId}`
+    : `/meditations/${currentMeditation.id}`;
 
   return (
-    <aside className={`persistent-player ${mobileExpanded ? "is-expanded" : ""}`} aria-label="Meditation player">
+    <aside
+      className={`persistent-player ${mobileExpanded ? "is-expanded" : ""} ${currentProgramId ? "has-program" : ""}`}
+      aria-label="Meditation player"
+    >
       <div className="persistent-player__progress">
         <input
           type="range"
@@ -63,10 +74,35 @@ export default function PersistentPlayer() {
         <div className="persistent-player__meditation">
           <MeditationArtwork meditation={currentMeditation} />
           <div>
-            <Link to={`/meditations/${currentMeditation.id}`}>{currentMeditation.title}</Link>
+            <Link to={meditationLink}>{currentMeditation.title}</Link>
             <span>{currentMeditation.teacher_name || "Still guide"}</span>
           </div>
         </div>
+
+        {currentProgramId && (
+          <div className="persistent-player__program">
+            <div>
+              <Link to={`/programs/${currentProgramId}`}>
+                {activeProgram?.title || "Program"}
+              </Link>
+              <span>
+                {activeProgramItem && activeProgram
+                  ? `Step ${activeProgramItem.position} of ${activeProgram.total_meditations}`
+                  : "Program session"}
+              </span>
+            </div>
+            <div className="persistent-player__program-actions">
+              <Link to={`/programs/${currentProgramId}`}>Back to program</Link>
+              <button
+                onClick={playNextProgramMeditation}
+                disabled={!nextProgramMeditation}
+                title={nextProgramMeditation ? nextProgramMeditation.title : "No next meditation"}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="persistent-player__transport">
           <button onClick={() => skip(-15)} aria-label="Back 15 seconds"><Icon type="back" /></button>

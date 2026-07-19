@@ -459,12 +459,21 @@ button { cursor: pointer; }
 
 .persistent-player { position:fixed; z-index:100; right:0; bottom:0; left:0; color:white; background:rgba(15,51,45,.97); box-shadow:0 -12px 45px rgba(8,35,30,.2); backdrop-filter:blur(18px); }
 .persistent-player__inner { width:min(1240px,calc(100% - 34px)); min-height:88px; margin:0 auto; display:grid; grid-template-columns:220px 140px minmax(190px,1fr) 190px 30px; align-items:center; gap:20px; }
+.persistent-player.has-program .persistent-player__inner { width:min(1320px,calc(100% - 34px)); grid-template-columns:220px minmax(190px,240px) 140px minmax(190px,1fr) 190px 30px; gap:18px; }
 .persistent-player__progress { display:none; }
 .persistent-player__meditation { display:flex; align-items:center; gap:11px; min-width:0; }
 .persistent-player__meditation > .meditation-art { flex:0 0 52px; width:52px; height:52px; border-radius:11px; }
 .persistent-player__meditation > div { display:flex; flex-direction:column; min-width:0; }
 .persistent-player__meditation a { overflow:hidden; font-family:"Playfair Display",serif; font-size:14px; white-space:nowrap; text-overflow:ellipsis; }
 .persistent-player__meditation span { margin-top:4px; overflow:hidden; color:rgba(255,255,255,.47); font-size:8px; white-space:nowrap; text-overflow:ellipsis; }
+.persistent-player__program { min-width:0; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid rgba(255,255,255,.12); border-radius:13px; background:rgba(255,255,255,.04); }
+.persistent-player__program > div:first-child { min-width:0; display:flex; flex-direction:column; }
+.persistent-player__program > div:first-child a { overflow:hidden; color:#f0c4ae; font-size:10px; font-weight:700; white-space:nowrap; text-overflow:ellipsis; }
+.persistent-player__program > div:first-child span { margin-top:4px; color:rgba(255,255,255,.48); font-size:8px; }
+.persistent-player__program-actions { flex:0 0 auto; display:flex; align-items:center; gap:6px; }
+.persistent-player__program-actions a,.persistent-player__program-actions button { min-height:28px; display:inline-flex; align-items:center; justify-content:center; padding:0 9px; border:1px solid rgba(255,255,255,.14); border-radius:999px; color:rgba(255,255,255,.76); background:rgba(255,255,255,.05); font-size:8px; font-weight:700; white-space:nowrap; }
+.persistent-player__program-actions button { color:#173f3a; background:#f1cfbb; }
+.persistent-player__program-actions button:disabled { cursor:not-allowed; opacity:.42; }
 .persistent-player__transport { display:flex; align-items:center; justify-content:center; gap:7px; }
 .persistent-player button { display:grid; place-items:center; border:0; color:rgba(255,255,255,.73); background:transparent; }
 .persistent-player button:hover { color:white; }
@@ -870,6 +879,7 @@ button { cursor: pointer; }
   .persistent-player__inner { width:100%; min-height:72px; padding:10px 12px 8px; grid-template-columns:minmax(0,1fr) auto auto auto; gap:8px; }
   .persistent-player__meditation > .meditation-art { flex-basis:44px; width:44px; height:44px; border-radius:9px; }
   .persistent-player__meditation a { font-size:12px; }
+  .persistent-player__program { display:none; }
   .persistent-player__transport { grid-column:2; }
   .persistent-player__transport > button:not(.persistent-player__play) { display:none; }
   .persistent-player__play { width:39px; height:39px; }
@@ -880,8 +890,10 @@ button { cursor: pointer; }
   .persistent-player.is-expanded .persistent-player__inner { padding-top:14px; padding-bottom:14px; }
   .persistent-player.is-expanded .persistent-player__transport { grid-column:1/-1; grid-row:2; margin-top:5px; }
   .persistent-player.is-expanded .persistent-player__transport > button:not(.persistent-player__play) { display:grid; }
-  .persistent-player.is-expanded .persistent-player__timeline { display:grid; grid-column:1/-1; grid-row:3; margin:5px 4px; }
-  .persistent-player.is-expanded .persistent-player__settings { display:flex; grid-column:1/-1; grid-row:4; justify-content:center; margin-top:3px; }
+  .persistent-player.is-expanded .persistent-player__program { display:flex; grid-column:1/-1; grid-row:3; }
+  .persistent-player.is-expanded .persistent-player__program-actions { flex-wrap:wrap; justify-content:flex-end; }
+  .persistent-player.is-expanded .persistent-player__timeline { display:grid; grid-column:1/-1; grid-row:4; margin:5px 4px; }
+  .persistent-player.is-expanded .persistent-player__settings { display:flex; grid-column:1/-1; grid-row:5; justify-content:center; margin-top:3px; }
   .persistent-player.is-expanded .persistent-player__expand svg { transform:rotate(180deg); }
   .persistent-player__status { right:10px; bottom:78px; left:10px; text-align:center; }
   .progress-hero { min-height:540px; }

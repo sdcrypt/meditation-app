@@ -36,6 +36,7 @@ export function PlayerProvider({ children }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [activeProgram, setActiveProgram] = useState(null);
   const [lastCompletedPlayback, setLastCompletedPlayback] = useState(null);
   const [volume, setVolumeState] = useState(() =>
     clamp(localStorage.getItem(VOLUME_KEY) ?? 0.8, 0, 1)
@@ -230,6 +231,53 @@ export function PlayerProvider({ children }) {
   }, [accountListeningTime, sendProgress, togglePlayback]);
 
   useEffect(() => {
+    if (!currentProgramId) {
+      setActiveProgram(null);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    fetch(`${API_BASE_URL}/programs/${currentProgramId}`, {
+      credentials: "include",
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error();
+        return response.json();
+      })
+      .then(setActiveProgram)
+      .catch((error) => {
+        if (error.name !== "AbortError") setActiveProgram(null);
+      });
+    return () => controller.abort();
+  }, [currentProgramId, currentMeditation?.id, lastCompletedPlayback]);
+
+  const activeProgramItem =
+    activeProgram?.meditations?.find(
+      (item) => item.meditation.id === currentMeditation?.id
+    ) ?? null;
+  const nextProgramItem = activeProgramItem
+    ? activeProgram.meditations.find(
+        (item) => item.position > activeProgramItem.position
+      )
+    : null;
+  const nextProgramMeditation = nextProgramItem?.meditation ?? null;
+
+  const playNextProgramMeditation = useCallback(() => {
+    const currentId = currentMeditationRef.current?.id;
+    const program = activeProgram;
+    const currentItem = program?.meditations?.find(
+      (item) => item.meditation.id === currentId
+    );
+    const nextItem = currentItem
+      ? program.meditations.find((item) => item.position > currentItem.position)
+      : null;
+    if (nextItem?.meditation) {
+      playMeditation(nextItem.meditation, { programId: currentProgramIdRef.current });
+    }
+  }, [activeProgram, playMeditation]);
+
+  useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !currentMeditation?.audio_url) return;
     audio.load();
@@ -388,6 +436,9 @@ export function PlayerProvider({ children }) {
       value={{
         currentMeditation,
         currentProgramId,
+        activeProgram,
+        activeProgramItem,
+        nextProgramMeditation,
         isPlaying,
         currentTime,
         duration,
@@ -396,6 +447,7 @@ export function PlayerProvider({ children }) {
         trackingError,
         lastCompletedPlayback,
         playMeditation,
+        playNextProgramMeditation,
         togglePlayback,
         seek,
         skip,
