@@ -61,7 +61,10 @@ export default function ProgramDetail() {
   const completionPercent = program.completion_percent ?? 0;
   const firstMeditation = program.meditations?.[0]?.meditation ?? null;
   const nextProgramItem = program.meditations.find((item) => !item.is_completed) ?? null;
-  const nextMeditation = nextProgramItem?.meditation ?? firstMeditation;
+  const nextMeditation =
+    program.next_meditation ||
+    nextProgramItem?.meditation ||
+    firstMeditation;
   const isProgramComplete = totalMeditations > 0 && completedMeditations === totalMeditations;
 
   const handleProgramAction = async () => {

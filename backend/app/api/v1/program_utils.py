@@ -63,6 +63,23 @@ def program_to_read(
                 MeditationSession.completed_at.isnot(None),
             ).distinct().all()
         }
+        recent_incomplete_session = db.query(MeditationSession).filter(
+            MeditationSession.user_id == current_user.id,
+            MeditationSession.program_id == program.id,
+            MeditationSession.meditation_id.in_(meditation_ids),
+            MeditationSession.completed_at.is_(None),
+        ).order_by(
+            MeditationSession.last_listened_at.desc().nullslast(),
+            MeditationSession.started_at.desc(),
+            MeditationSession.id.desc(),
+        ).first()
+        recent_incomplete_meditation_id = (
+            recent_incomplete_session.meditation_id
+            if recent_incomplete_session is not None
+            else None
+        )
+    else:
+        recent_incomplete_meditation_id = None
     total_meditations = len(meditation_ids)
     completed_meditations = len(completed_ids)
     if enrollment is not None:
@@ -79,7 +96,18 @@ def program_to_read(
     )
     next_meditation = None
     if is_enrolled and completed_meditations < total_meditations:
+        if recent_incomplete_meditation_id is not None:
+            for item, meditation in rows:
+                if meditation.id == recent_incomplete_meditation_id:
+                    next_meditation = ProgramNextMeditationRead(
+                        id=meditation.id,
+                        title=meditation.title,
+                        position=item.position,
+                    )
+                    break
         for item, meditation in rows:
+            if next_meditation is not None:
+                break
             if meditation.id not in completed_ids:
                 next_meditation = ProgramNextMeditationRead(
                     id=meditation.id,

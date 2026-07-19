@@ -175,7 +175,7 @@ export default function Account() {
                     : ` · started ${startedAt}`}
                 </small>
                 {program.next_meditation && !isComplete && (
-                  <small>Next up · {program.next_meditation.title}</small>
+                  <small>Continue with · {program.next_meditation.title}</small>
                 )}
                 <i><b style={{ width: `${program.completion_percent}%` }} /></i>
               </div>
