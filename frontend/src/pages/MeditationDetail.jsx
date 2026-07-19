@@ -65,11 +65,13 @@ export default function MeditationDetail() {
 
   const benefits = cleanListValues(meditation.benefits);
   const tags = cleanListValues(meditation.tags);
+  const backLink = programId ? `/programs/${programId}` : "/explore";
+  const backLabel = programId ? "Back to program" : "Back to Explore";
 
   return (
     <main className="detail-page">
       <div className="site-shell detail-shell">
-        <Link className="detail-back" to="/explore"><BackIcon /> Back to Explore</Link>
+        <Link className="detail-back" to={backLink}><BackIcon /> {backLabel}</Link>
         <div className="detail-grid">
           <MeditationArtwork meditation={meditation} className="detail-artwork">
             {meditation.is_featured && <span className="detail-featured-badge">Featured practice</span>}

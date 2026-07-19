@@ -56,6 +56,13 @@ class ProgramMeditationRead(BaseModel):
     meditation: MeditationRead
 
 
+class ProgramNextMeditationRead(BaseModel):
+    """The next meditation a user should open in a started program."""
+    id: int
+    title: str
+    position: int
+
+
 class ProgramRead(ProgramBase):
     """Program details returned by public and admin APIs."""
     id: int
@@ -65,6 +72,7 @@ class ProgramRead(ProgramBase):
     completed_meditations: int = 0
     total_meditations: int = 0
     completion_percent: int = 0
+    next_meditation: ProgramNextMeditationRead | None = None
     meditations: list[ProgramMeditationRead] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)

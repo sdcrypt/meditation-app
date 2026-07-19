@@ -107,6 +107,91 @@ export default function Account() {
     return program.completed_meditations > 0 ? "Continue" : "Start path";
   };
 
+  const programGroups = useMemo(() => {
+    const active = [];
+    const completed = [];
+    enrolledPrograms.forEach((enrollment) => {
+      if (enrollment.completed_at || enrollment.program?.completion_percent >= 100) {
+        completed.push(enrollment);
+      } else {
+        active.push(enrollment);
+      }
+    });
+    return { active, completed };
+  }, [enrolledPrograms]);
+
+  const getProgramActionLink = (enrollment) => {
+    const program = enrollment.program;
+    if (enrollment.completed_at || program.completion_percent >= 100) {
+      return `/programs/${program.id}`;
+    }
+    const nextMeditation =
+      program.next_meditation ||
+      program.meditations?.find((item) => !item.is_completed)?.meditation ||
+      program.meditations?.[0]?.meditation;
+    return nextMeditation
+      ? `/meditations/${nextMeditation.id}?program=${program.id}`
+      : `/programs/${program.id}`;
+  };
+
+  const renderProgramList = (items, emptyState) => {
+    if (items.length === 0) return emptyState;
+    return (
+      <div className="account-program-list">
+        {items.map((enrollment) => {
+          const program = enrollment.program;
+          const isComplete = Boolean(enrollment.completed_at) || program.completion_percent >= 100;
+          const startedAt = new Date(enrollment.started_at).toLocaleDateString();
+          const completedAt = enrollment.completed_at
+            ? new Date(enrollment.completed_at).toLocaleDateString()
+            : null;
+          return (
+            <article
+              className={`account-program-item ${isComplete ? "is-complete" : ""}`}
+              key={enrollment.id}
+            >
+              <Link className="account-program-art-link" to={`/programs/${program.id}`}>
+                <MeditationArtwork
+                  meditation={{
+                    ...(program.meditations?.[0]?.meditation ?? {
+                      id: program.id,
+                      title: program.title,
+                    }),
+                    artwork_url:
+                      program.artwork_url ||
+                      program.meditations?.[0]?.meditation?.artwork_url,
+                  }}
+                />
+              </Link>
+              <div>
+                <span>{program.goal || "mindfulness"} · {program.level}</span>
+                <Link to={`/programs/${program.id}`}>
+                  <strong>{program.title}</strong>
+                </Link>
+                <small>
+                  {program.completed_meditations} of {program.total_meditations} completed
+                  {isComplete && completedAt
+                    ? ` · completed ${completedAt}`
+                    : ` · started ${startedAt}`}
+                </small>
+                {program.next_meditation && !isComplete && (
+                  <small>Next up · {program.next_meditation.title}</small>
+                )}
+                <i><b style={{ width: `${program.completion_percent}%` }} /></i>
+              </div>
+              <em>
+                {isComplete ? "✓ Complete" : `${program.completion_percent}%`}
+              </em>
+              <Link className="account-program-action" to={getProgramActionLink(enrollment)}>
+                {getProgramAction(program)} →
+              </Link>
+            </article>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <main className="account-page">
       <div className="site-shell account-shell">
@@ -247,45 +332,34 @@ export default function Account() {
           {dashboardLoading ? (
             <div className="account-saved-empty">Loading your programs…</div>
           ) : enrolledPrograms.length > 0 ? (
-            <div className="account-program-list">
-              {enrolledPrograms.map((enrollment) => {
-                const program = enrollment.program;
-                const isComplete = Boolean(enrollment.completed_at);
-                return (
-                  <Link
-                    className={`account-program-item ${isComplete ? "is-complete" : ""}`}
-                    to={`/programs/${program.id}`}
-                    key={enrollment.id}
-                  >
-                    <MeditationArtwork
-                      meditation={{
-                        ...(program.meditations?.[0]?.meditation ?? {
-                          id: program.id,
-                          title: program.title,
-                        }),
-                        artwork_url:
-                          program.artwork_url ||
-                          program.meditations?.[0]?.meditation?.artwork_url,
-                      }}
-                    />
-                    <div>
-                      <span>{program.goal || "mindfulness"} · {program.level}</span>
-                      <strong>{program.title}</strong>
-                      <small>
-                        {program.completed_meditations} of {program.total_meditations} completed
-                        {isComplete
-                          ? ` · completed ${new Date(enrollment.completed_at).toLocaleDateString()}`
-                          : ` · started ${new Date(enrollment.started_at).toLocaleDateString()}`}
-                      </small>
-                      <i><b style={{ width: `${program.completion_percent}%` }} /></i>
-                    </div>
-                    <em>
-                      {isComplete ? "✓ Complete" : `${program.completion_percent}%`}
-                    </em>
-                    <b>{getProgramAction(program)} →</b>
-                  </Link>
-                );
-              })}
+            <div className="account-program-groups">
+              <div className="account-program-group">
+                <div className="account-program-group__heading">
+                  <h3>Active programs</h3>
+                  <span>{programGroups.active.length}</span>
+                </div>
+                {renderProgramList(
+                  programGroups.active,
+                  <div className="account-empty-mini">
+                    <h3>No active programs.</h3>
+                    <p>Start another guided path when you are ready.</p>
+                    <Link to="/programs">Browse programs</Link>
+                  </div>
+                )}
+              </div>
+              <div className="account-program-group">
+                <div className="account-program-group__heading">
+                  <h3>Completed programs</h3>
+                  <span>{programGroups.completed.length}</span>
+                </div>
+                {renderProgramList(
+                  programGroups.completed,
+                  <div className="account-empty-mini">
+                    <h3>No completed programs yet.</h3>
+                    <p>Complete every meditation in a program to see it here.</p>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="account-saved-empty">

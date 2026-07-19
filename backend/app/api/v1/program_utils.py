@@ -6,7 +6,11 @@ from app.models.meditation import Meditation
 from app.models.program import Program, ProgramMeditation, UserProgram
 from app.models.session import MeditationSession
 from app.models.user import User
-from app.schemas.program import ProgramMeditationRead, ProgramRead
+from app.schemas.program import (
+    ProgramMeditationRead,
+    ProgramNextMeditationRead,
+    ProgramRead,
+)
 
 
 def update_enrollment_completion(
@@ -64,6 +68,16 @@ def program_to_read(
         if total_meditations
         else 0
     )
+    next_meditation = None
+    if is_enrolled and completed_meditations < total_meditations:
+        for item, meditation in rows:
+            if meditation.id not in completed_ids:
+                next_meditation = ProgramNextMeditationRead(
+                    id=meditation.id,
+                    title=meditation.title,
+                    position=item.position,
+                )
+                break
 
     return ProgramRead(
         id=program.id,
@@ -79,6 +93,7 @@ def program_to_read(
         completed_meditations=completed_meditations,
         total_meditations=total_meditations,
         completion_percent=completion_percent,
+        next_meditation=next_meditation,
         meditations=[
             ProgramMeditationRead(
                 position=item.position,
