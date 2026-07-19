@@ -36,6 +36,7 @@ export default function PersistentPlayer() {
     playbackRate,
     trackingError,
     nextPrompt,
+    completionCelebration,
     togglePlayback,
     seek,
     skip,
@@ -43,6 +44,7 @@ export default function PersistentPlayer() {
     setPlaybackRate,
     playNextProgramMeditation,
     dismissNextPrompt,
+    dismissCompletionCelebration,
     closePlayer,
   } = usePlayer();
   const [mobileExpanded, setMobileExpanded] = useState(false);
@@ -172,6 +174,19 @@ export default function PersistentPlayer() {
           </div>
           <button onClick={playNextProgramMeditation}>Play next</button>
           <button onClick={dismissNextPrompt}>Not now</button>
+        </div>
+      )}
+      {completionCelebration && (
+        <div className="persistent-player__celebration" role="status">
+          <span>✓</span>
+          <div>
+            <p>Program complete</p>
+            <strong>{completionCelebration.programTitle}</strong>
+            <small>{completionCelebration.totalMeditations} meditations completed. Nice work.</small>
+          </div>
+          <Link to={`/programs/${completionCelebration.programId}`}>View program</Link>
+          <Link to="/account">Account</Link>
+          <button onClick={dismissCompletionCelebration} aria-label="Dismiss completion celebration">×</button>
         </div>
       )}
       {trackingError && <p className="persistent-player__status">{trackingError}</p>}

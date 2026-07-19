@@ -503,6 +503,15 @@ button { cursor: pointer; }
 .persistent-player__next-prompt small { overflow:hidden; color:#7c8a84; font-size:9px; white-space:nowrap; text-overflow:ellipsis; }
 .persistent-player__next-prompt button { min-height:34px; display:inline-flex; align-items:center; justify-content:center; padding:0 12px; border-radius:999px; color:white; background:#23584e; font-size:9px; font-weight:800; white-space:nowrap; }
 .persistent-player__next-prompt button:last-child { color:#7b8983; background:#e8ece5; }
+.persistent-player__celebration { position:absolute; right:24px; bottom:102px; width:min(520px,calc(100vw - 36px)); display:grid; grid-template-columns:42px 1fr auto auto 28px; align-items:center; gap:12px; padding:16px; border:1px solid #bfd9c5; border-radius:20px; color:#173f3a; background:radial-gradient(circle at 12% 0%,rgba(240,207,187,.75),transparent 35%),linear-gradient(135deg,#f3f8f1,#fbfaf6); box-shadow:0 22px 58px rgba(8,35,30,.25); }
+.persistent-player__celebration > span { display:grid; place-items:center; width:38px; height:38px; border-radius:50%; color:white; background:#3f786a; font-size:16px; font-weight:800; }
+.persistent-player__celebration div { min-width:0; }
+.persistent-player__celebration p { margin:0 0 3px; color:#3f786a; font-size:8px; font-weight:900; letter-spacing:1px; text-transform:uppercase; }
+.persistent-player__celebration strong { display:block; overflow:hidden; font-family:"Playfair Display",serif; font-size:20px; font-weight:500; white-space:nowrap; text-overflow:ellipsis; }
+.persistent-player__celebration small { display:block; margin-top:3px; color:#7c8a84; font-size:9px; }
+.persistent-player__celebration a { min-height:34px; display:inline-flex; align-items:center; justify-content:center; padding:0 12px; border-radius:999px; color:white; background:#23584e; font-size:9px; font-weight:800; white-space:nowrap; }
+.persistent-player__celebration a:nth-of-type(2) { color:#35685d; background:#dfece1; }
+.persistent-player__celebration button { display:grid; place-items:center; width:28px; height:28px; border-radius:50%; color:#7b8983; background:#e8ece5; font-size:18px; }
 .persistent-player__status { position:absolute; right:18px; bottom:92px; margin:0; padding:7px 10px; border-radius:7px; color:#7e5144; background:#f3d2c1; box-shadow:0 8px 20px rgba(16,48,42,.15); font-size:8px; }
 
 .progress-page { min-height:100vh; color:#173f3a; background:#f4f2ea; }
@@ -908,6 +917,11 @@ button { cursor: pointer; }
   .persistent-player.is-expanded .persistent-player__expand svg { transform:rotate(180deg); }
   .persistent-player__next-prompt { right:10px; bottom:78px; left:10px; width:auto; grid-template-columns:1fr; gap:9px; }
   .persistent-player__next-prompt button { width:100%; }
+  .persistent-player__celebration { right:10px; bottom:78px; left:10px; width:auto; grid-template-columns:36px 1fr 28px; gap:10px; }
+  .persistent-player__celebration > span { width:34px; height:34px; }
+  .persistent-player__celebration strong { font-size:17px; }
+  .persistent-player__celebration a { grid-column:1/-1; }
+  .persistent-player__celebration button { grid-column:3; grid-row:1; }
   .persistent-player__status { right:10px; bottom:78px; left:10px; text-align:center; }
   .progress-hero { min-height:540px; }
   .progress-hero__content { min-height:540px; align-items:center; justify-content:center; flex-direction:column; gap:30px; padding:55px 0 50px; text-align:center; }

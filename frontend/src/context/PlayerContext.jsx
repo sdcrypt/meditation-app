@@ -39,6 +39,7 @@ export function PlayerProvider({ children }) {
   const [activeProgram, setActiveProgram] = useState(null);
   const [lastCompletedPlayback, setLastCompletedPlayback] = useState(null);
   const [nextPrompt, setNextPrompt] = useState(null);
+  const [completionCelebration, setCompletionCelebration] = useState(null);
   const [volume, setVolumeState] = useState(() =>
     clamp(localStorage.getItem(VOLUME_KEY) ?? 0.8, 0, 1)
   );
@@ -198,6 +199,7 @@ export function PlayerProvider({ children }) {
     const nextProgramId = options.programId ? Number(options.programId) : null;
     const audio = audioRef.current;
     setNextPrompt(null);
+    setCompletionCelebration(null);
     if (
       currentMeditationRef.current?.id === meditation.id &&
       currentProgramIdRef.current === nextProgramId
@@ -334,6 +336,7 @@ export function PlayerProvider({ children }) {
     setDuration(0);
     setIsPlaying(false);
     setNextPrompt(null);
+    setCompletionCelebration(null);
     sessionIdRef.current = null;
     localStorage.removeItem(CURRENT_KEY);
     localStorage.removeItem(CURRENT_PROGRAM_KEY);
@@ -423,8 +426,18 @@ export function PlayerProvider({ children }) {
             nextPosition: nextItem.position,
             totalMeditations: program.total_meditations,
           });
+          setCompletionCelebration(null);
+        } else if (programId && program && currentItem) {
+          setCompletionCelebration({
+            programId,
+            programTitle: program.title,
+            totalMeditations: program.total_meditations,
+            completedAt: Date.now(),
+          });
+          setNextPrompt(null);
         } else {
           setNextPrompt(null);
+          setCompletionCelebration(null);
         }
       } catch {
         setTrackingError("Completion will sync when you listen again.");
@@ -462,6 +475,7 @@ export function PlayerProvider({ children }) {
         activeProgramItem,
         nextProgramMeditation,
         nextPrompt,
+        completionCelebration,
         isPlaying,
         currentTime,
         duration,
@@ -472,6 +486,7 @@ export function PlayerProvider({ children }) {
         playMeditation,
         playNextProgramMeditation,
         dismissNextPrompt: () => setNextPrompt(null),
+        dismissCompletionCelebration: () => setCompletionCelebration(null),
         togglePlayback,
         seek,
         skip,

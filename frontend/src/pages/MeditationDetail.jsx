@@ -29,6 +29,7 @@ export default function MeditationDetail() {
   const [error, setError] = useState("");
   const {
     currentMeditation,
+    currentProgramId,
     isPlaying,
     currentTime,
     lastCompletedPlayback,
@@ -127,6 +128,10 @@ export default function MeditationDetail() {
     program.completed_meditations >= program.total_meditations
   );
   const completedDate = formatDate(program?.enrollment_completed_at);
+  const normalizedProgramId = programId ? Number(programId) : null;
+  const isCurrentDetailPlayback =
+    currentMeditation?.id === meditation.id &&
+    (currentProgramId || null) === normalizedProgramId;
 
   const handleProgramNextAction = () => {
     if (nextProgramMeditation) {
@@ -215,9 +220,9 @@ export default function MeditationDetail() {
             {meditation.audio_url ? (
               <div className="detail-player">
                 <div>
-                  <span>{currentMeditation?.id === meditation.id && currentTime > 0 ? "Continue your practice" : "Ready when you are"}</span>
+                  <span>{isCurrentDetailPlayback && currentTime > 0 ? "Continue your practice" : "Ready when you are"}</span>
                   <strong>
-                    {currentMeditation?.id === meditation.id && currentTime > 0
+                    {isCurrentDetailPlayback && currentTime > 0
                       ? `Resume from ${Math.floor(currentTime / 60)}:${String(Math.floor(currentTime % 60)).padStart(2, "0")}`
                       : "Press play and settle in"}
                   </strong>
@@ -226,8 +231,8 @@ export default function MeditationDetail() {
                   className="detail-player__button"
                   onClick={() => playMeditation(meditation, { programId })}
                 >
-                  <span>{currentMeditation?.id === meditation.id && isPlaying ? "Ⅱ" : "▶"}</span>
-                  {currentMeditation?.id === meditation.id && isPlaying ? "Pause meditation" : "Play meditation"}
+                  <span>{isCurrentDetailPlayback && isPlaying ? "Ⅱ" : "▶"}</span>
+                  {isCurrentDetailPlayback && isPlaying ? "Pause meditation" : "Play meditation"}
                 </button>
                 <small>Your progress is saved automatically across pages.</small>
               </div>
