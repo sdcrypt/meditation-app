@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import MeditationArtwork from "./MeditationArtwork";
 import { useFavorites } from "../context/FavoritesContext";
+import { cleanListValues } from "../utils/listValues";
 
 export const formatDuration = (seconds) => {
   const minutes = Math.max(1, Math.round(seconds / 60));
@@ -19,8 +20,8 @@ const ArrowIcon = () => (
 
 export default function MeditationCard({ meditation, featured = false, reason = "" }) {
   const { isFavorite, toggleFavorite } = useFavorites();
-  const visibleTags = (meditation.tags ?? []).slice(0, featured ? 4 : 3);
-  const firstBenefit = meditation.benefits?.[0];
+  const visibleTags = cleanListValues(meditation.tags).slice(0, featured ? 4 : 3);
+  const firstBenefit = cleanListValues(meditation.benefits)[0];
   const saved = isFavorite(meditation.id);
 
   const handleFavoriteClick = async (event) => {

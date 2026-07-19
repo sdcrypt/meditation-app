@@ -19,6 +19,7 @@ from app.services.s3_service import S3Service
 
 logger = get_logger(__name__)
 router = APIRouter()
+PLACEHOLDER_LIST_VALUES = {"[]", "{}", "null", "none", "undefined", "-", "n/a", "na"}
 ALLOWED_ARTWORK_TYPES = {"image/jpeg", "image/png", "image/webp", "image/avif"}
 MAX_ARTWORK_BYTES = 10 * 1024 * 1024
 CSV_COLUMNS = {
@@ -91,7 +92,12 @@ def split_csv_list(value: str | None, separator: str) -> list[str]:
     """Split a simple CSV cell into a clean list."""
     if not value:
         return []
-    return [item.strip() for item in value.split(separator) if item.strip()]
+    items = []
+    for item in value.split(separator):
+        cleaned = item.strip()
+        if cleaned and cleaned.casefold() not in PLACEHOLDER_LIST_VALUES:
+            items.append(cleaned)
+    return items
 
 
 def normalize_zip_name(filename: str | None) -> str:

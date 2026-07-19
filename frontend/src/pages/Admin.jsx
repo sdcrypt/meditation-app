@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { formatDuration } from "../components/MeditationCard";
 import { API_BASE_URL } from "../config";
 import { useAuth } from "../context/AuthContext";
+import { cleanListValues, parseDelimitedList } from "../utils/listValues";
 
 const EMPTY_MEDITATION = {
   title: "",
@@ -38,15 +39,15 @@ Sleep Reset,A soothing evening sequence for deeper rest,sleep,all levels,true,sl
 
 const withDraftFields = (meditation) => ({
   ...meditation,
-  tags_text: (meditation.tags ?? []).join(", "),
-  benefits_text: (meditation.benefits ?? []).join("\n"),
+  tags_text: cleanListValues(meditation.tags).join(", "),
+  benefits_text: cleanListValues(meditation.benefits).join("\n"),
 });
 
 const parseTags = (value) =>
-  value.split(",").map((item) => item.trim()).filter(Boolean);
+  parseDelimitedList(value, ",");
 
 const parseBenefits = (value) =>
-  value.split("\n").map((item) => item.trim()).filter(Boolean);
+  parseDelimitedList(value, "\n");
 
 const withProgramDraftFields = (program) => ({
   ...program,

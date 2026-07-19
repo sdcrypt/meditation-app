@@ -1,3 +1,5 @@
+import { cleanListValues } from "./listValues";
+
 export const GOAL_OPTIONS = [
   { id: "stress", label: "Less stress", icon: "≈", keywords: ["stress", "calm", "relax", "anxiety", "breath"] },
   { id: "sleep", label: "Better sleep", icon: "☾", keywords: ["sleep", "rest", "bedtime", "evening", "deep"] },
@@ -40,8 +42,8 @@ const searchableMeditationText = (meditation) =>
     meditation.title,
     meditation.category,
     meditation.description,
-    ...(meditation.tags ?? []),
-    ...(meditation.benefits ?? []),
+    ...cleanListValues(meditation.tags),
+    ...cleanListValues(meditation.benefits),
   ].join(" ").toLowerCase();
 
 export const rankMeditations = (meditations, preferences, history = []) => {

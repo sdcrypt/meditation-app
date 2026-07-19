@@ -4,6 +4,9 @@ from urllib.parse import urlparse
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
+PLACEHOLDER_LIST_VALUES = {"[]", "{}", "null", "none", "undefined", "-", "n/a", "na"}
+
+
 def _normalize_url(value: str | None) -> str | None:
     """Clean a URL and make sure it points to a web address."""
     if value is None:
@@ -40,6 +43,8 @@ def _normalize_string_list(
             raise ValueError(f"{field_name} must contain only strings")
         item = item.strip()
         if not item:
+            continue
+        if item.casefold() in PLACEHOLDER_LIST_VALUES:
             continue
         if len(item) > item_max_length:
             raise ValueError(

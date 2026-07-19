@@ -8,6 +8,7 @@ import {
   GOAL_OPTIONS,
   rankMeditations,
 } from "../utils/personalization";
+import { cleanListValues } from "../utils/listValues";
 
 const SearchIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -123,8 +124,8 @@ export default function Explore() {
         item.teacher_name,
         item.description,
         item.category,
-        ...(item.tags ?? []),
-        ...(item.benefits ?? []),
+        ...cleanListValues(item.tags),
+        ...cleanListValues(item.benefits),
       ].join(" ").toLowerCase();
 
       return (

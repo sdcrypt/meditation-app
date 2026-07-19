@@ -5,6 +5,7 @@ import { formatDuration, meditationDescription } from "../components/MeditationC
 import { API_BASE_URL } from "../config";
 import { useFavorites } from "../context/FavoritesContext";
 import { usePlayer } from "../context/PlayerContext";
+import { cleanListValues } from "../utils/listValues";
 
 const BackIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -61,6 +62,9 @@ export default function MeditationDetail() {
       </main>
     );
   }
+
+  const benefits = cleanListValues(meditation.benefits);
+  const tags = cleanListValues(meditation.tags);
 
   return (
     <main className="detail-page">
@@ -121,20 +125,20 @@ export default function MeditationDetail() {
               </div>
             )}
 
-            {(meditation.benefits ?? []).length > 0 && (
+            {benefits.length > 0 && (
               <section className="detail-benefits">
                 <h2>This practice may help you</h2>
                 <ul>
-                  {meditation.benefits.map((benefit) => (
+                  {benefits.map((benefit) => (
                     <li key={benefit}><span>✓</span>{benefit}</li>
                   ))}
                 </ul>
               </section>
             )}
 
-            {(meditation.tags ?? []).length > 0 && (
+            {tags.length > 0 && (
               <div className="detail-tags">
-                {meditation.tags.map((tag) => <span key={tag}>{tag}</span>)}
+                {tags.map((tag) => <span key={tag}>{tag}</span>)}
               </div>
             )}
           </article>
