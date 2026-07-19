@@ -58,8 +58,8 @@ export default function ForgotPassword() {
           <p className="eyebrow">Password reset</p>
           <h1>Find your way back in.</h1>
           <p className="auth-form-intro">
-            Enter your account email. In this local build, we will show a reset link
-            directly after the request.
+            Enter your account email. If it belongs to an active account, we will
+            send a secure reset link.
           </p>
 
           {error && <div className="auth-error" role="alert">{error}</div>}
@@ -68,7 +68,7 @@ export default function ForgotPassword() {
               <p>{result.message}</p>
               {result.reset_url && (
                 <Link to={new URL(result.reset_url).pathname + new URL(result.reset_url).search}>
-                  Open reset link
+                  Open local reset link
                 </Link>
               )}
             </div>

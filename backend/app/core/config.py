@@ -44,6 +44,16 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
 
+    # Email
+    EMAIL_PROVIDER: str = "none"
+    EMAIL_FROM: str = "Still <no-reply@example.com>"
+    RESEND_API_KEY: str = ""
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_USE_TLS: bool = True
+
     @field_validator("AUTH_COOKIE_SAMESITE")
     @classmethod
     def validate_cookie_samesite(cls, value: str) -> str:
@@ -51,6 +61,15 @@ class Settings(BaseSettings):
         normalized = value.lower()
         if normalized not in {"lax", "strict", "none"}:
             raise ValueError("AUTH_COOKIE_SAMESITE must be lax, strict, or none")
+        return normalized
+
+    @field_validator("EMAIL_PROVIDER")
+    @classmethod
+    def validate_email_provider(cls, value: str) -> str:
+        """Keep email provider values explicit and predictable."""
+        normalized = value.lower()
+        if normalized not in {"none", "resend", "smtp"}:
+            raise ValueError("EMAIL_PROVIDER must be none, resend, or smtp")
         return normalized
 
     @model_validator(mode="after")
@@ -65,6 +84,14 @@ class Settings(BaseSettings):
                 raise ValueError("PASSWORD_RESET_URL_BASE must use https in production")
             if self.JWT_SECRET_KEY == "development-only-change-me":
                 raise ValueError("JWT_SECRET_KEY must be changed in production")
+            if self.EMAIL_PROVIDER == "none":
+                raise ValueError("EMAIL_PROVIDER must be resend or smtp in production")
+            if self.EMAIL_PROVIDER == "resend" and not self.RESEND_API_KEY:
+                raise ValueError("RESEND_API_KEY is required when EMAIL_PROVIDER=resend")
+            if self.EMAIL_PROVIDER == "smtp" and (
+                not self.SMTP_HOST or not self.SMTP_USERNAME or not self.SMTP_PASSWORD
+            ):
+                raise ValueError("SMTP_HOST, SMTP_USERNAME, and SMTP_PASSWORD are required when EMAIL_PROVIDER=smtp")
         return self
 
     class Config:

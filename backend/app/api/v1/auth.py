@@ -23,6 +23,7 @@ from app.schemas.auth import (
     UserRead,
     UserRegister,
 )
+from app.services.email_service import send_password_reset_email
 
 router = APIRouter()
 RESET_TOKEN_EXPIRE_MINUTES = 30
@@ -161,17 +162,26 @@ def request_password_reset(
     """Create a password reset link when the email belongs to an active account."""
     check_rate_limit(request, scope="auth:password-reset-request", limit=5, window_seconds=900)
     user = db.query(User).filter(User.email == payload.email).first()
-    message = "If an account exists for this email, a reset link has been prepared."
+    message = "If an account exists for this email, a reset link has been sent."
     if user is None or not user.is_active:
         return PasswordResetRequestResult(message=message)
 
     raw_token = create_password_reset_for_user(user, db)
-    db.commit()
-
     reset_url = f"{settings.PASSWORD_RESET_URL_BASE}?token={raw_token}"
+    try:
+        email_sent = send_password_reset_email(user.email, reset_url)
+    except RuntimeError as error:
+        db.rollback()
+        raise HTTPException(
+            status_code=503,
+            detail="Password reset email could not be sent. Please try again later.",
+        ) from error
+
+    db.commit()
+    should_return_dev_link = settings.APP_ENV.lower() != "production" and not email_sent
     return PasswordResetRequestResult(
         message=message,
-        reset_url=reset_url,
+        reset_url=reset_url if should_return_dev_link else None,
     )
 
 
