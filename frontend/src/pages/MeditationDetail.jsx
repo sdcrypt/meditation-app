@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import MeditationArtwork from "../components/MeditationArtwork";
 import { formatDuration, meditationDescription } from "../components/MeditationCard";
 import { API_BASE_URL } from "../config";
@@ -15,15 +15,20 @@ const BackIcon = () => (
 
 export default function MeditationDetail() {
   const { meditationId } = useParams();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const programId = searchParams.get("program");
   const [meditation, setMeditation] = useState(null);
+  const [program, setProgram] = useState(null);
+  const [programError, setProgramError] = useState("");
+  const [programRefreshKey, setProgramRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const {
     currentMeditation,
     isPlaying,
     currentTime,
+    lastCompletedPlayback,
     playMeditation,
   } = usePlayer();
   const { isFavorite, toggleFavorite } = useFavorites();
@@ -47,6 +52,39 @@ export default function MeditationDetail() {
     return () => controller.abort();
   }, [meditationId]);
 
+  useEffect(() => {
+    if (!programId) {
+      setProgram(null);
+      setProgramError("");
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    setProgramError("");
+    fetch(`${API_BASE_URL}/programs/${programId}`, {
+      credentials: "include",
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("Unable to load program context.");
+        return response.json();
+      })
+      .then(setProgram)
+      .catch((requestError) => {
+        if (requestError.name !== "AbortError") setProgramError(requestError.message);
+      });
+    return () => controller.abort();
+  }, [programId, programRefreshKey]);
+
+  useEffect(() => {
+    if (
+      lastCompletedPlayback?.meditationId === Number(meditationId) &&
+      lastCompletedPlayback?.programId === Number(programId)
+    ) {
+      setProgramRefreshKey(lastCompletedPlayback.completedAt);
+    }
+  }, [lastCompletedPlayback, meditationId, programId]);
+
   if (loading) {
     return <main className="detail-page"><div className="detail-loading">Preparing your practice…</div></main>;
   }
@@ -67,6 +105,34 @@ export default function MeditationDetail() {
   const tags = cleanListValues(meditation.tags);
   const backLink = programId ? `/programs/${programId}` : "/explore";
   const backLabel = programId ? "Back to program" : "Back to Explore";
+  const programItems = program?.meditations ?? [];
+  const currentProgramItem = programItems.find(
+    (item) => item.meditation.id === Number(meditationId)
+  );
+  const nextProgramItem = currentProgramItem
+    ? programItems.find(
+        (item) =>
+          item.position > currentProgramItem.position &&
+          !item.is_completed
+      ) || programItems.find((item) => item.position > currentProgramItem.position)
+    : null;
+  const nextProgramMeditation = nextProgramItem?.meditation ?? null;
+  const isLastProgramMeditation = Boolean(program && currentProgramItem && !nextProgramMeditation);
+  const isProgramComplete = Boolean(
+    program &&
+    program.total_meditations > 0 &&
+    program.completed_meditations >= program.total_meditations
+  );
+
+  const handleProgramNextAction = () => {
+    if (nextProgramMeditation) {
+      navigate(`/meditations/${nextProgramMeditation.id}?program=${program.id}`);
+      return;
+    }
+    if (!isProgramComplete && isLastProgramMeditation) {
+      playMeditation(meditation, { programId });
+    }
+  };
 
   return (
     <main className="detail-page">
@@ -101,6 +167,38 @@ export default function MeditationDetail() {
               <div><span>Level</span><strong>{meditation.level}</strong></div>
               <div><span>Focus</span><strong>{meditation.category}</strong></div>
             </div>
+
+            {program && currentProgramItem && (
+              <section className="detail-program-card">
+                <div>
+                  <span>Part of {program.title}</span>
+                  <strong>Step {currentProgramItem.position} of {program.total_meditations}</strong>
+                  {nextProgramMeditation ? (
+                    <p>Next in program · {nextProgramMeditation.title}</p>
+                  ) : isProgramComplete ? (
+                    <p>This program is complete.</p>
+                  ) : (
+                    <p>Final meditation in this program.</p>
+                  )}
+                </div>
+                <div className="detail-program-card__actions">
+                  <Link to={`/programs/${program.id}`}>View program</Link>
+                  {nextProgramMeditation ? (
+                    <button onClick={handleProgramNextAction}>Play next meditation</button>
+                  ) : isProgramComplete ? (
+                    <Link to={`/programs/${program.id}`}>Program complete</Link>
+                  ) : (
+                    <button onClick={handleProgramNextAction}>Finish program</button>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {programError && (
+              <div className="detail-program-card detail-program-card--error">
+                {programError} <Link to={`/programs/${programId}`}>Open program</Link>
+              </div>
+            )}
 
             {meditation.audio_url ? (
               <div className="detail-player">

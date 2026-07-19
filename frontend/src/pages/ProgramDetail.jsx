@@ -148,9 +148,22 @@ export default function ProgramDetail() {
         <div className="program-step-list">
           {program.meditations.map((item) => {
             const isNextUp = program.is_enrolled && nextProgramItem?.meditation.id === item.meditation.id;
+            const isInProgress = program.is_enrolled && item.is_started && !item.is_completed;
+            const statusLabel = item.is_completed
+              ? "Completed"
+              : isInProgress
+                ? "In progress"
+                : isNextUp
+                  ? "Next up"
+                  : "Not started";
+            const actionLabel = item.is_completed
+              ? "Replay →"
+              : isInProgress || isNextUp
+                ? "Continue →"
+                : "Start →";
             return (
             <Link
-              className={`program-step ${item.is_completed ? "is-completed" : ""} ${isNextUp ? "is-next" : ""}`}
+              className={`program-step ${item.is_completed ? "is-completed" : ""} ${isNextUp ? "is-next" : ""} ${isInProgress ? "is-in-progress" : ""}`}
               to={program.is_enrolled
                 ? `/meditations/${item.meditation.id}?program=${program.id}`
                 : `/meditations/${item.meditation.id}`}
@@ -160,16 +173,12 @@ export default function ProgramDetail() {
               <MeditationArtwork meditation={item.meditation} />
               <div>
                 <small>
-                  {item.is_completed
-                    ? "Completed"
-                    : isNextUp
-                      ? "Next up"
-                      : "Not started"} · {item.meditation.category} · {formatDuration(item.meditation.duration_sec)}
+                  {statusLabel} · {item.meditation.category} · {formatDuration(item.meditation.duration_sec)}
                 </small>
                 <strong>{item.meditation.title}</strong>
                 <p>{item.meditation.teacher_name || "Still guide"}</p>
               </div>
-              <b>{item.is_completed ? "Replay →" : isNextUp ? "Continue →" : "Start →"}</b>
+              <b>{actionLabel}</b>
             </Link>
             );
           })}

@@ -36,6 +36,7 @@ export function PlayerProvider({ children }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [lastCompletedPlayback, setLastCompletedPlayback] = useState(null);
   const [volume, setVolumeState] = useState(() =>
     clamp(localStorage.getItem(VOLUME_KEY) ?? 0.8, 0, 1)
   );
@@ -336,6 +337,7 @@ export function PlayerProvider({ children }) {
     setIsPlaying(false);
 
     const meditation = currentMeditationRef.current;
+    const programId = currentProgramIdRef.current;
     const activeSessionId = await ensureSession();
     if (meditation && Number.isInteger(activeSessionId)) {
       try {
@@ -348,6 +350,11 @@ export function PlayerProvider({ children }) {
             position_sec: Math.floor(duration || meditation.duration_sec),
             seconds_listened: Math.floor(listenedSecondsRef.current),
           }),
+        });
+        setLastCompletedPlayback({
+          meditationId: meditation.id,
+          programId,
+          completedAt: Date.now(),
         });
       } catch {
         setTrackingError("Completion will sync when you listen again.");
@@ -387,6 +394,7 @@ export function PlayerProvider({ children }) {
         volume,
         playbackRate,
         trackingError,
+        lastCompletedPlayback,
         playMeditation,
         togglePlayback,
         seek,

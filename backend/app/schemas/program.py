@@ -52,6 +52,7 @@ class ProgramUpdate(BaseModel):
 class ProgramMeditationRead(BaseModel):
     """One meditation in its program order."""
     position: int
+    is_started: bool = False
     is_completed: bool = False
     meditation: MeditationRead
 

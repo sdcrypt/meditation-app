@@ -42,9 +42,18 @@ def program_to_read(
         Meditation.is_published.is_(True),
     ).order_by(ProgramMeditation.position.asc()).all()
     meditation_ids = [meditation.id for _, meditation in rows]
+    started_ids = set()
     completed_ids = set()
     is_enrolled = enrollment is not None
     if current_user is not None and is_enrolled and meditation_ids:
+        started_ids = {
+            item[0]
+            for item in db.query(MeditationSession.meditation_id).filter(
+                MeditationSession.user_id == current_user.id,
+                MeditationSession.program_id == program.id,
+                MeditationSession.meditation_id.in_(meditation_ids),
+            ).distinct().all()
+        }
         completed_ids = {
             item[0]
             for item in db.query(MeditationSession.meditation_id).filter(
@@ -97,6 +106,7 @@ def program_to_read(
         meditations=[
             ProgramMeditationRead(
                 position=item.position,
+                is_started=meditation.id in started_ids,
                 is_completed=meditation.id in completed_ids,
                 meditation=meditation,
             )
