@@ -35,12 +35,14 @@ export default function PersistentPlayer() {
     volume,
     playbackRate,
     trackingError,
+    nextPrompt,
     togglePlayback,
     seek,
     skip,
     setVolume,
     setPlaybackRate,
     playNextProgramMeditation,
+    dismissNextPrompt,
     closePlayer,
   } = usePlayer();
   const [mobileExpanded, setMobileExpanded] = useState(false);
@@ -159,6 +161,19 @@ export default function PersistentPlayer() {
         </button>
         <button className="persistent-player__close" onClick={closePlayer} aria-label="Close player"><Icon type="close" /></button>
       </div>
+      {nextPrompt && (
+        <div className="persistent-player__next-prompt" role="status">
+          <div>
+            <span>Program step complete</span>
+            <strong>Next: {nextPrompt.nextMeditation.title}</strong>
+            <small>
+              {nextPrompt.programTitle} · Step {nextPrompt.nextPosition} of {nextPrompt.totalMeditations}
+            </small>
+          </div>
+          <button onClick={playNextProgramMeditation}>Play next</button>
+          <button onClick={dismissNextPrompt}>Not now</button>
+        </div>
+      )}
       {trackingError && <p className="persistent-player__status">{trackingError}</p>}
     </aside>
   );

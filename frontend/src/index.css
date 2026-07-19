@@ -496,6 +496,13 @@ button { cursor: pointer; }
 .persistent-player__close { justify-self:end; width:30px; height:30px; }
 .persistent-player__close svg { width:18px !important; }
 .persistent-player__expand { display:none !important; }
+.persistent-player__next-prompt { position:absolute; right:24px; bottom:102px; width:min(420px,calc(100vw - 36px)); display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:12px; padding:14px; border:1px solid rgba(255,255,255,.18); border-radius:16px; color:#173f3a; background:#fbfaf6; box-shadow:0 18px 48px rgba(8,35,30,.22); }
+.persistent-player__next-prompt div { min-width:0; display:flex; flex-direction:column; }
+.persistent-player__next-prompt span { color:#bd7058; font-size:8px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; }
+.persistent-player__next-prompt strong { overflow:hidden; margin:4px 0 3px; font-family:"Playfair Display",serif; font-size:18px; font-weight:500; white-space:nowrap; text-overflow:ellipsis; }
+.persistent-player__next-prompt small { overflow:hidden; color:#7c8a84; font-size:9px; white-space:nowrap; text-overflow:ellipsis; }
+.persistent-player__next-prompt button { min-height:34px; display:inline-flex; align-items:center; justify-content:center; padding:0 12px; border-radius:999px; color:white; background:#23584e; font-size:9px; font-weight:800; white-space:nowrap; }
+.persistent-player__next-prompt button:last-child { color:#7b8983; background:#e8ece5; }
 .persistent-player__status { position:absolute; right:18px; bottom:92px; margin:0; padding:7px 10px; border-radius:7px; color:#7e5144; background:#f3d2c1; box-shadow:0 8px 20px rgba(16,48,42,.15); font-size:8px; }
 
 .progress-page { min-height:100vh; color:#173f3a; background:#f4f2ea; }
@@ -899,6 +906,8 @@ button { cursor: pointer; }
   .persistent-player.is-expanded .persistent-player__timeline { display:grid; grid-column:1/-1; grid-row:4; margin:5px 4px; }
   .persistent-player.is-expanded .persistent-player__settings { display:flex; grid-column:1/-1; grid-row:5; justify-content:center; margin-top:3px; }
   .persistent-player.is-expanded .persistent-player__expand svg { transform:rotate(180deg); }
+  .persistent-player__next-prompt { right:10px; bottom:78px; left:10px; width:auto; grid-template-columns:1fr; gap:9px; }
+  .persistent-player__next-prompt button { width:100%; }
   .persistent-player__status { right:10px; bottom:78px; left:10px; text-align:center; }
   .progress-hero { min-height:540px; }
   .progress-hero__content { min-height:540px; align-items:center; justify-content:center; flex-direction:column; gap:30px; padding:55px 0 50px; text-align:center; }

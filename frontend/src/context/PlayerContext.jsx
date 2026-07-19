@@ -38,6 +38,7 @@ export function PlayerProvider({ children }) {
   const [duration, setDuration] = useState(0);
   const [activeProgram, setActiveProgram] = useState(null);
   const [lastCompletedPlayback, setLastCompletedPlayback] = useState(null);
+  const [nextPrompt, setNextPrompt] = useState(null);
   const [volume, setVolumeState] = useState(() =>
     clamp(localStorage.getItem(VOLUME_KEY) ?? 0.8, 0, 1)
   );
@@ -196,6 +197,7 @@ export function PlayerProvider({ children }) {
   const playMeditation = useCallback((meditation, options = {}) => {
     const nextProgramId = options.programId ? Number(options.programId) : null;
     const audio = audioRef.current;
+    setNextPrompt(null);
     if (
       currentMeditationRef.current?.id === meditation.id &&
       currentProgramIdRef.current === nextProgramId
@@ -331,6 +333,7 @@ export function PlayerProvider({ children }) {
     setCurrentTime(0);
     setDuration(0);
     setIsPlaying(false);
+    setNextPrompt(null);
     sessionIdRef.current = null;
     localStorage.removeItem(CURRENT_KEY);
     localStorage.removeItem(CURRENT_PROGRAM_KEY);
@@ -386,6 +389,13 @@ export function PlayerProvider({ children }) {
 
     const meditation = currentMeditationRef.current;
     const programId = currentProgramIdRef.current;
+    const program = activeProgram;
+    const currentItem = program?.meditations?.find(
+      (item) => item.meditation.id === meditation?.id
+    );
+    const nextItem = currentItem
+      ? program.meditations.find((item) => item.position > currentItem.position)
+      : null;
     const activeSessionId = await ensureSession();
     if (meditation && Number.isInteger(activeSessionId)) {
       try {
@@ -404,6 +414,18 @@ export function PlayerProvider({ children }) {
           programId,
           completedAt: Date.now(),
         });
+        if (programId && program && nextItem?.meditation) {
+          setNextPrompt({
+            programId,
+            programTitle: program.title,
+            currentTitle: meditation.title,
+            nextMeditation: nextItem.meditation,
+            nextPosition: nextItem.position,
+            totalMeditations: program.total_meditations,
+          });
+        } else {
+          setNextPrompt(null);
+        }
       } catch {
         setTrackingError("Completion will sync when you listen again.");
       }
@@ -439,6 +461,7 @@ export function PlayerProvider({ children }) {
         activeProgram,
         activeProgramItem,
         nextProgramMeditation,
+        nextPrompt,
         isPlaying,
         currentTime,
         duration,
@@ -448,6 +471,7 @@ export function PlayerProvider({ children }) {
         lastCompletedPlayback,
         playMeditation,
         playNextProgramMeditation,
+        dismissNextPrompt: () => setNextPrompt(null),
         togglePlayback,
         seek,
         skip,
