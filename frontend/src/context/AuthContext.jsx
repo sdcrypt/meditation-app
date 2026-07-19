@@ -1,10 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { API_BASE_URL, DEVICE_ID } from "../config";
+import { csrfFetch } from "../utils/authFetch";
 
 const AuthContext = createContext();
 
 const syncDeviceProgress = async () => {
-  await fetch(`${API_BASE_URL}/sessions/sync-device`, {
+  await csrfFetch(`${API_BASE_URL}/sessions/sync-device`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -76,7 +77,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     localStorage.removeItem("token");
     try {
-      await fetch(`${API_BASE_URL}/auth/logout`, {
+      await csrfFetch(`${API_BASE_URL}/auth/logout`, {
         method: "POST",
         credentials: "include",
       });

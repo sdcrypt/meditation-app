@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { API_BASE_URL } from "../config";
+import { csrfFetch } from "../utils/authFetch";
 import { useAuth } from "./AuthContext";
 
 const PreferencesContext = createContext(null);
@@ -98,7 +99,7 @@ export function PreferencesProvider({ children }) {
           localBelongsToUser &&
           (!remotePreferences || localUpdatedAt >= remoteUpdatedAt)
         ) {
-          const saveResponse = await fetch(`${API_BASE_URL}/preferences/me`, {
+          const saveResponse = await csrfFetch(`${API_BASE_URL}/preferences/me`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -142,7 +143,7 @@ export function PreferencesProvider({ children }) {
     if (!user) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/preferences/me`, {
+      const response = await csrfFetch(`${API_BASE_URL}/preferences/me`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

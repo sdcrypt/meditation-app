@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { API_BASE_URL } from "../config";
+import { csrfFetch } from "../utils/authFetch";
 
 const getErrorMessage = (payload, fallback) => {
   if (typeof payload?.detail === "string") return payload.detail;
@@ -22,7 +23,7 @@ export default function ForgotPassword() {
     setResult(null);
     setIsSubmitting(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/password-reset/request`, {
+      const response = await csrfFetch(`${API_BASE_URL}/auth/password-reset/request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

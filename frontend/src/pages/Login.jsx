@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../config";
 import { useAuth } from "../context/AuthContext";
-import { sessionExpiredMessage } from "../utils/authFetch";
+import { csrfFetch, sessionExpiredMessage } from "../utils/authFetch";
 
 const getErrorMessage = (payload, fallback) => {
   if (typeof payload?.detail === "string") return payload.detail;
@@ -45,7 +45,7 @@ export default function Login() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(
+      const response = await csrfFetch(
         `${API_BASE_URL}/auth/${mode === "register" ? "register" : "login"}`,
         {
           method: "POST",

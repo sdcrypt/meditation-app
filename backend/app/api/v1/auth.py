@@ -2,12 +2,14 @@ import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.csrf import create_csrf_token, set_csrf_cookie
 from app.core.dependencies import get_current_user
+from app.core.rate_limit import check_rate_limit
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.session import SessionLocal
 from app.models.password_reset import PasswordResetToken
@@ -66,6 +68,7 @@ def authentication_response(user: User, response: Response) -> AuthSession:
         {"sub": str(user.id), "is_admin": user.is_admin}
     )
     set_auth_cookie(response, token)
+    set_csrf_cookie(response, create_csrf_token())
     return AuthSession(user=user)
 
 
@@ -101,9 +104,11 @@ def create_password_reset_for_user(user: User, db: Session) -> str:
 def register(
     payload: UserRegister,
     response: Response,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     """Create a normal user account and sign the new user in."""
+    check_rate_limit(request, scope="auth:register", limit=5, window_seconds=900)
     existing_user = db.query(User).filter(User.email == payload.email).first()
     if existing_user is not None:
         raise HTTPException(
@@ -134,9 +139,11 @@ def register(
 def login(
     payload: UserLogin,
     response: Response,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     """Check an email and password, then sign in the matching user."""
+    check_rate_limit(request, scope="auth:login", limit=10, window_seconds=900)
     user = db.query(User).filter(User.email == payload.email).first()
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
@@ -148,9 +155,11 @@ def login(
 @router.post("/password-reset/request", response_model=PasswordResetRequestResult)
 def request_password_reset(
     payload: PasswordResetRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     """Create a password reset link when the email belongs to an active account."""
+    check_rate_limit(request, scope="auth:password-reset-request", limit=5, window_seconds=900)
     user = db.query(User).filter(User.email == payload.email).first()
     message = "If an account exists for this email, a reset link has been prepared."
     if user is None or not user.is_active:
@@ -170,9 +179,11 @@ def request_password_reset(
 def confirm_password_reset(
     payload: PasswordResetConfirm,
     response: Response,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     """Accept a valid reset token, change the password, and sign the user in."""
+    check_rate_limit(request, scope="auth:password-reset-confirm", limit=10, window_seconds=900)
     token_hash = hash_reset_token(payload.token)
     reset_token = db.query(PasswordResetToken).filter(
         PasswordResetToken.token_hash == token_hash,
@@ -208,9 +219,24 @@ def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
+@router.get("/csrf")
+def get_csrf_token(response: Response):
+    """Return a CSRF token that frontend requests can send back in a header."""
+    token = create_csrf_token()
+    set_csrf_cookie(response, token)
+    return {"csrf_token": token}
+
+
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 def logout(response: Response):
     """Sign the current browser out by clearing its session cookie."""
     clear_auth_cookie(response)
+    response.delete_cookie(
+        key=settings.CSRF_COOKIE_NAME,
+        path="/",
+        secure=settings.AUTH_COOKIE_SECURE,
+        samesite=settings.AUTH_COOKIE_SAMESITE,
+        domain=settings.AUTH_COOKIE_DOMAIN,
+    )
     response.status_code = status.HTTP_204_NO_CONTENT
     return None

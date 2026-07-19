@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "../config";
 import { useAuth } from "../context/AuthContext";
+import { csrfFetch } from "../utils/authFetch";
 
 const getErrorMessage = (payload, fallback) => {
   if (typeof payload?.detail === "string") return payload.detail;
@@ -35,7 +36,7 @@ export default function ResetPassword() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/password-reset/confirm`, {
+      const response = await csrfFetch(`${API_BASE_URL}/auth/password-reset/confirm`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

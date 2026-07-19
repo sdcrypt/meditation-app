@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { API_BASE_URL, DEVICE_ID } from "../config";
+import { csrfFetch } from "../utils/authFetch";
 
 const PlayerContext = createContext(null);
 const CURRENT_KEY = "still_current_meditation";
@@ -105,7 +106,7 @@ export function PlayerProvider({ children }) {
     const programId = currentProgramIdRef.current;
     if (!meditation?.id || !meditation.audio_url) return null;
 
-    sessionPromiseRef.current = fetch(`${API_BASE_URL}/sessions/start`, {
+    sessionPromiseRef.current = csrfFetch(`${API_BASE_URL}/sessions/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -164,7 +165,7 @@ export function PlayerProvider({ children }) {
     saveProgress(meditation.id, payload.position_sec);
 
     try {
-      const response = await fetch(
+      const response = await csrfFetch(
         `${API_BASE_URL}/sessions/${activeSessionId}/progress`,
         {
           method: "PATCH",
@@ -402,7 +403,7 @@ export function PlayerProvider({ children }) {
     const activeSessionId = await ensureSession();
     if (meditation && Number.isInteger(activeSessionId)) {
       try {
-        await fetch(`${API_BASE_URL}/sessions/${activeSessionId}/complete`, {
+        await csrfFetch(`${API_BASE_URL}/sessions/${activeSessionId}/complete`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",

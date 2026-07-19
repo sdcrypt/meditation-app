@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     AUTH_COOKIE_SECURE: bool = False
     AUTH_COOKIE_SAMESITE: str = "lax"
     AUTH_COOKIE_DOMAIN: str | None = None
+    CSRF_COOKIE_NAME: str = "still_csrf"
+    CSRF_HEADER_NAME: str = "X-CSRF-Token"
+    CSRF_TOKEN_EXPIRE_MINUTES: int = 120
 
     # Logging
     LOG_LEVEL: str = "INFO"

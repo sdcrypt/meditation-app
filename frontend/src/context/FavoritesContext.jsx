@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { API_BASE_URL } from "../config";
+import { csrfFetch } from "../utils/authFetch";
 import { useAuth } from "./AuthContext";
 
 const FavoritesContext = createContext(null);
@@ -65,7 +66,7 @@ export function FavoritesProvider({ children }) {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/favorites/${meditationId}`, {
+      const response = await csrfFetch(`${API_BASE_URL}/favorites/${meditationId}`, {
         method: isSaved ? "DELETE" : "POST",
         credentials: "include",
       });

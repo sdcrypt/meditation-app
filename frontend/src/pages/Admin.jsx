@@ -3,7 +3,7 @@ import { formatDuration } from "../components/MeditationCard";
 import { API_BASE_URL } from "../config";
 import { useAuth } from "../context/AuthContext";
 import { cleanListValues, parseDelimitedList } from "../utils/listValues";
-import { isUnauthorized } from "../utils/authFetch";
+import { csrfFetch, isUnauthorized } from "../utils/authFetch";
 
 const EMPTY_MEDITATION = {
   title: "",
@@ -211,7 +211,7 @@ export default function Admin() {
   const [notice, setNotice] = useState("");
 
   const request = useCallback(async (path, options = {}) => {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await csrfFetch(`${API_BASE_URL}${path}`, {
       ...options,
       credentials: "include",
       headers: {

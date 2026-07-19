@@ -4,6 +4,7 @@ import MeditationArtwork from "../components/MeditationArtwork";
 import { formatDuration } from "../components/MeditationCard";
 import { API_BASE_URL } from "../config";
 import { useAuth } from "../context/AuthContext";
+import { csrfFetch } from "../utils/authFetch";
 
 const formatDate = (value) =>
   value ? new Date(value).toLocaleDateString() : "";
@@ -88,7 +89,7 @@ export default function ProgramDetail() {
     setStarting(true);
     setError("");
     try {
-      const response = await fetch(`${API_BASE_URL}/programs/${program.id}/start`, {
+      const response = await csrfFetch(`${API_BASE_URL}/programs/${program.id}/start`, {
         method: "POST",
         credentials: "include",
       });
