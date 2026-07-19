@@ -1,3 +1,4 @@
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 from typing import List
 
@@ -7,6 +8,9 @@ class Settings(BaseSettings):
     # App
     PROJECT_NAME: str = "Meditation App API"
     API_V1_STR: str = "/api/v1"
+    APP_ENV: str = "development"
+    FRONTEND_URL: str = "http://localhost:5173"
+    PASSWORD_RESET_URL_BASE: str = "http://localhost:5173/reset-password"
 
     # CORS (React dev + prod later)
     CORS_ORIGINS: List[str] = [
@@ -32,9 +36,33 @@ class Settings(BaseSettings):
     AUTH_COOKIE_NAME: str = "still_session"
     AUTH_COOKIE_SECURE: bool = False
     AUTH_COOKIE_SAMESITE: str = "lax"
+    AUTH_COOKIE_DOMAIN: str | None = None
 
     # Logging
     LOG_LEVEL: str = "INFO"
+
+    @field_validator("AUTH_COOKIE_SAMESITE")
+    @classmethod
+    def validate_cookie_samesite(cls, value: str) -> str:
+        """Keep cookie SameSite values within browser-supported options."""
+        normalized = value.lower()
+        if normalized not in {"lax", "strict", "none"}:
+            raise ValueError("AUTH_COOKIE_SAMESITE must be lax, strict, or none")
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_production_auth_settings(self):
+        """Prevent unsafe cookie and URL settings in production."""
+        if self.APP_ENV.lower() == "production":
+            if not self.AUTH_COOKIE_SECURE:
+                raise ValueError("AUTH_COOKIE_SECURE must be true in production")
+            if not self.FRONTEND_URL.startswith("https://"):
+                raise ValueError("FRONTEND_URL must use https in production")
+            if not self.PASSWORD_RESET_URL_BASE.startswith("https://"):
+                raise ValueError("PASSWORD_RESET_URL_BASE must use https in production")
+            if self.JWT_SECRET_KEY == "development-only-change-me":
+                raise ValueError("JWT_SECRET_KEY must be changed in production")
+        return self
 
     class Config:
         """Tell Pydantic where to read local environment values from."""

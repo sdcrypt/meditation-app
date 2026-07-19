@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../config";
 import { useAuth } from "../context/AuthContext";
+import { sessionExpiredMessage } from "../utils/authFetch";
 
 const getErrorMessage = (payload, fallback) => {
   if (typeof payload?.detail === "string") return payload.detail;
@@ -20,11 +21,15 @@ export default function Login() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isLoading, login } = useAuth();
+  const { user, isLoading, login, sessionMessage, clearSessionMessage } = useAuth();
+  const queryMessage = new URLSearchParams(location.search).get("expired")
+    ? sessionExpiredMessage
+    : "";
 
   const changeMode = (nextMode) => {
     setMode(nextMode);
     setError("");
+    clearSessionMessage();
     setPassword("");
     setConfirmPassword("");
   };
@@ -32,6 +37,7 @@ export default function Login() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
+    clearSessionMessage();
     if (mode === "register" && password !== confirmPassword) {
       setError("Passwords do not match");
       return;
@@ -104,8 +110,10 @@ export default function Login() {
             <button className={mode === "register" ? "active" : ""} onClick={() => changeMode("register")}>Create account</button>
           </div>
 
-          {(error || location.state?.error) && (
-            <div className="auth-error" role="alert">{error || location.state.error}</div>
+          {(error || location.state?.error || sessionMessage || queryMessage) && (
+            <div className="auth-error" role="alert">
+              {error || location.state?.error || sessionMessage || queryMessage}
+            </div>
           )}
 
           <form onSubmit={handleSubmit}>

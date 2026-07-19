@@ -44,6 +44,7 @@ def set_auth_cookie(response: Response, token: str) -> None:
         httponly=True,
         secure=settings.AUTH_COOKIE_SECURE,
         samesite=settings.AUTH_COOKIE_SAMESITE,
+        domain=settings.AUTH_COOKIE_DOMAIN,
         path="/",
     )
 
@@ -55,6 +56,7 @@ def clear_auth_cookie(response: Response) -> None:
         path="/",
         secure=settings.AUTH_COOKIE_SECURE,
         samesite=settings.AUTH_COOKIE_SAMESITE,
+        domain=settings.AUTH_COOKIE_DOMAIN,
     )
 
 
@@ -157,7 +159,7 @@ def request_password_reset(
     raw_token = create_password_reset_for_user(user, db)
     db.commit()
 
-    reset_url = f"http://localhost:5173/reset-password?token={raw_token}"
+    reset_url = f"{settings.PASSWORD_RESET_URL_BASE}?token={raw_token}"
     return PasswordResetRequestResult(
         message=message,
         reset_url=reset_url,

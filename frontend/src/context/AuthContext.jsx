@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { API_BASE_URL, DEVICE_ID } from "../config";
 
 const AuthContext = createContext();
@@ -15,6 +15,7 @@ const syncDeviceProgress = async () => {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionMessage, setSessionMessage] = useState("");
 
   useEffect(() => {
     localStorage.removeItem("token");
@@ -48,27 +49,31 @@ export function AuthProvider({ children }) {
     return () => controller.abort();
   }, []);
 
-  const login = async () => {
+  const login = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/auth/me`, {
         credentials: "include",
       });
 
       if (!res.ok) {
+        if (res.status === 401) {
+          setSessionMessage("Your session has expired. Please sign in again.");
+        }
         throw new Error("Unable to validate the session");
       }
 
       const authenticatedUser = await res.json();
       await syncDeviceProgress().catch(() => {});
       setUser(authenticatedUser);
+      setSessionMessage("");
       return authenticatedUser;
     } catch (error) {
       setUser(null);
       throw error;
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     localStorage.removeItem("token");
     try {
       await fetch(`${API_BASE_URL}/auth/logout`, {
@@ -79,10 +84,25 @@ export function AuthProvider({ children }) {
       // Local logout still clears UI state if the network is unavailable.
     }
     setUser(null);
-  };
+    setSessionMessage("");
+  }, []);
+
+  const markSessionExpired = useCallback((message = "Your session has expired. Please sign in again.") => {
+    localStorage.removeItem("token");
+    setUser(null);
+    setSessionMessage(message);
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{
+      user,
+      isLoading,
+      login,
+      logout,
+      sessionMessage,
+      markSessionExpired,
+      clearSessionMessage: () => setSessionMessage(""),
+    }}>
       {children}
     </AuthContext.Provider>
   );

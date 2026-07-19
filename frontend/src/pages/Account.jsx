@@ -7,6 +7,7 @@ import { API_BASE_URL, DEVICE_ID } from "../config";
 import { useAuth } from "../context/AuthContext";
 import { useFavorites } from "../context/FavoritesContext";
 import { usePreferences } from "../context/PreferencesContext";
+import { isUnauthorized, sessionExpiredMessage } from "../utils/authFetch";
 import {
   DURATION_OPTIONS,
   EXPERIENCE_OPTIONS,
@@ -28,7 +29,7 @@ const formatAccountDate = (value) =>
   value ? new Date(value).toLocaleDateString() : "";
 
 export default function Account() {
-  const { user, logout } = useAuth();
+  const { user, logout, markSessionExpired } = useAuth();
   const { favorites, isLoading: favoritesLoading } = useFavorites();
   const { preferences, openOnboarding } = usePreferences();
   const [summary, setSummary] = useState(null);
@@ -62,6 +63,16 @@ export default function Account() {
         ),
       ]);
       if (!summaryResponse.ok || !historyResponse.ok || !programsResponse.ok) {
+        if (
+          [summaryResponse, historyResponse, programsResponse].some(isUnauthorized)
+        ) {
+          markSessionExpired();
+          navigate("/login", {
+            replace: true,
+            state: { from: location, error: sessionExpiredMessage },
+          });
+          return;
+        }
         throw new Error("Unable to load account dashboard.");
       }
       const [summaryData, historyData, programsData] = await Promise.all([
@@ -77,7 +88,7 @@ export default function Account() {
     } finally {
       setDashboardLoading(false);
     }
-  }, [timezone]);
+  }, [location, markSessionExpired, navigate, timezone]);
 
   useEffect(() => {
     fetchDashboard();

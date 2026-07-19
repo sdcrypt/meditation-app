@@ -3,6 +3,7 @@ import { formatDuration } from "../components/MeditationCard";
 import { API_BASE_URL } from "../config";
 import { useAuth } from "../context/AuthContext";
 import { cleanListValues, parseDelimitedList } from "../utils/listValues";
+import { isUnauthorized } from "../utils/authFetch";
 
 const EMPTY_MEDITATION = {
   title: "",
@@ -186,7 +187,7 @@ function ProgramMeditationPicker({
 }
 
 export default function Admin() {
-  const { logout } = useAuth();
+  const { logout, markSessionExpired } = useAuth();
   const [meditations, setMeditations] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [newMeditation, setNewMeditation] = useState(EMPTY_MEDITATION);
@@ -219,10 +220,14 @@ export default function Admin() {
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
+      if (isUnauthorized(response)) {
+        markSessionExpired();
+        window.location.href = `/login?expired=1`;
+      }
       throw new Error(getErrorMessage(payload, `Request failed: ${response.status}`));
     }
     return payload;
-  }, []);
+  }, [markSessionExpired]);
 
   const fetchMeditations = useCallback(async () => {
     setPageError("");

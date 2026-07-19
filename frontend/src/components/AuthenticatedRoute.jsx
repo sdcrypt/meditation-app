@@ -10,7 +10,16 @@ export default function AuthenticatedRoute({ children }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{
+          from: location,
+          error: "Please sign in to continue.",
+        }}
+      />
+    );
   }
 
   return children;
