@@ -63,3 +63,32 @@ class Token(BaseModel):
 class AuthSession(BaseModel):
     """Account details returned after cookie-based login or registration."""
     user: UserRead
+
+
+class PasswordResetRequest(BaseModel):
+    """Email entered when a user asks to reset their password."""
+    email: EmailStr
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        """Use the same lowercase email format as login and registration."""
+        return str(value).strip().lower()
+
+
+class PasswordResetRequestResult(BaseModel):
+    """Response after a reset request is accepted."""
+    message: str
+    reset_url: str | None = None
+
+
+class PasswordResetConfirm(BaseModel):
+    """Token and new password entered from the reset screen."""
+    token: str = Field(min_length=20, max_length=300)
+    password: str = Field(min_length=10, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, value: str) -> str:
+        """Require the same password strength used during registration."""
+        return UserRegister.validate_password_strength(value)

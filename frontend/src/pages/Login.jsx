@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../config";
 import { useAuth } from "../context/AuthContext";
 
@@ -159,7 +159,10 @@ export default function Login() {
                 : mode === "register" ? "Create account" : "Sign in"}
             </button>
           </form>
-          <small className="auth-privacy">Your email is used only for your Still account.</small>
+          <small className="auth-privacy">
+            {mode === "login" && <><Link to="/forgot-password">Forgot password?</Link><br /></>}
+            Your email is used only for your Still account.
+          </small>
         </div>
       </section>
     </main>

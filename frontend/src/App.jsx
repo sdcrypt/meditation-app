@@ -13,6 +13,8 @@ import ProgramDetail from "./pages/ProgramDetail";
 import Progress from "./pages/Progress";
 import Admin from "./pages/Admin";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Account from "./pages/Account";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AuthenticatedRoute from "./components/AuthenticatedRoute";
@@ -96,6 +98,8 @@ export default function App() {
             <Route path="/meditations/:meditationId" element={<MeditationDetail />} />
             <Route path="/progress" element={<Progress />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/account" element={
               <AuthenticatedRoute>
                 <Account />

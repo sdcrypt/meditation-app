@@ -1,3 +1,7 @@
+import hashlib
+import secrets
+from datetime import UTC, datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -6,10 +10,20 @@ from app.core.config import settings
 from app.core.dependencies import get_current_user
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.session import SessionLocal
+from app.models.password_reset import PasswordResetToken
 from app.models.user import User
-from app.schemas.auth import AuthSession, UserLogin, UserRead, UserRegister
+from app.schemas.auth import (
+    AuthSession,
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    PasswordResetRequestResult,
+    UserLogin,
+    UserRead,
+    UserRegister,
+)
 
 router = APIRouter()
+RESET_TOKEN_EXPIRE_MINUTES = 30
 
 
 def get_db():
@@ -51,6 +65,30 @@ def authentication_response(user: User, response: Response) -> AuthSession:
     )
     set_auth_cookie(response, token)
     return AuthSession(user=user)
+
+
+def hash_reset_token(token: str) -> str:
+    """Create a stable fingerprint for a reset token without storing the token itself."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def create_password_reset_for_user(user: User, db: Session) -> str:
+    """Create a fresh reset token and disable older unused tokens for the user."""
+    db.query(PasswordResetToken).filter(
+        PasswordResetToken.user_id == user.id,
+        PasswordResetToken.used_at.is_(None),
+    ).update({"is_active": False})
+
+    raw_token = secrets.token_urlsafe(48)
+    db.add(
+        PasswordResetToken(
+            user_id=user.id,
+            token_hash=hash_reset_token(raw_token),
+            expires_at=datetime.now(UTC) + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES),
+            is_active=True,
+        )
+    )
+    return raw_token
 
 
 @router.post(
@@ -102,6 +140,63 @@ def login(
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account is disabled")
+    return authentication_response(user, response)
+
+
+@router.post("/password-reset/request", response_model=PasswordResetRequestResult)
+def request_password_reset(
+    payload: PasswordResetRequest,
+    db: Session = Depends(get_db),
+):
+    """Create a password reset link when the email belongs to an active account."""
+    user = db.query(User).filter(User.email == payload.email).first()
+    message = "If an account exists for this email, a reset link has been prepared."
+    if user is None or not user.is_active:
+        return PasswordResetRequestResult(message=message)
+
+    raw_token = create_password_reset_for_user(user, db)
+    db.commit()
+
+    reset_url = f"http://localhost:5173/reset-password?token={raw_token}"
+    return PasswordResetRequestResult(
+        message=message,
+        reset_url=reset_url,
+    )
+
+
+@router.post("/password-reset/confirm", response_model=AuthSession)
+def confirm_password_reset(
+    payload: PasswordResetConfirm,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    """Accept a valid reset token, change the password, and sign the user in."""
+    token_hash = hash_reset_token(payload.token)
+    reset_token = db.query(PasswordResetToken).filter(
+        PasswordResetToken.token_hash == token_hash,
+        PasswordResetToken.used_at.is_(None),
+        PasswordResetToken.is_active.is_(True),
+    ).first()
+    if reset_token is None or reset_token.expires_at < datetime.now(UTC):
+        raise HTTPException(status_code=400, detail="Reset link is invalid or expired")
+
+    user = db.query(User).filter(
+        User.id == reset_token.user_id,
+        User.is_active.is_(True),
+    ).first()
+    if user is None:
+        raise HTTPException(status_code=400, detail="Reset link is invalid or expired")
+
+    user.hashed_password = hash_password(payload.password)
+    reset_token.used_at = datetime.now(UTC)
+    reset_token.is_active = False
+    db.query(PasswordResetToken).filter(
+        PasswordResetToken.user_id == user.id,
+        PasswordResetToken.id != reset_token.id,
+        PasswordResetToken.used_at.is_(None),
+    ).update({"is_active": False})
+    db.commit()
+    db.refresh(user)
     return authentication_response(user, response)
 
 
