@@ -24,6 +24,9 @@ const formatListeningTime = (seconds = 0) => {
   return `${Math.round(seconds / 60)} min`;
 };
 
+const formatAccountDate = (value) =>
+  value ? new Date(value).toLocaleDateString() : "";
+
 export default function Account() {
   const { user, logout } = useAuth();
   const { favorites, isLoading: favoritesLoading } = useFavorites();
@@ -104,7 +107,23 @@ export default function Account() {
 
   const getProgramAction = (program) => {
     if (program.completion_percent >= 100) return "Review program";
-    return program.completed_meditations > 0 ? "Continue" : "Start path";
+    return program.next_meditation || program.completed_meditations > 0
+      ? "Continue"
+      : "Start path";
+  };
+
+  const getProgramStatus = (program, isComplete) => {
+    if (isComplete) return "Completed";
+    const inProgressItem = program.meditations?.find(
+      (item) => item.is_started && !item.is_completed
+    );
+    if (inProgressItem) {
+      return `In progress · ${inProgressItem.meditation.title}`;
+    }
+    if (program.next_meditation) {
+      return `Current · ${program.next_meditation.title}`;
+    }
+    return "Active";
   };
 
   const programGroups = useMemo(() => {
@@ -141,10 +160,11 @@ export default function Account() {
         {items.map((enrollment) => {
           const program = enrollment.program;
           const isComplete = Boolean(enrollment.completed_at) || program.completion_percent >= 100;
-          const startedAt = new Date(enrollment.started_at).toLocaleDateString();
-          const completedAt = enrollment.completed_at
-            ? new Date(enrollment.completed_at).toLocaleDateString()
-            : null;
+          const startedAt = formatAccountDate(enrollment.started_at || program.enrollment_started_at);
+          const completedAt = formatAccountDate(
+            enrollment.completed_at || program.enrollment_completed_at
+          );
+          const status = getProgramStatus(program, isComplete);
           return (
             <article
               className={`account-program-item ${isComplete ? "is-complete" : ""}`}
@@ -164,18 +184,22 @@ export default function Account() {
                 />
               </Link>
               <div>
-                <span>{program.goal || "mindfulness"} · {program.level}</span>
+                <span>{status}</span>
                 <Link to={`/programs/${program.id}`}>
                   <strong>{program.title}</strong>
                 </Link>
                 <small>
                   {program.completed_meditations} of {program.total_meditations} completed
                   {isComplete && completedAt
-                    ? ` · completed ${completedAt}`
-                    : ` · started ${startedAt}`}
+                    ? ` · Completed ${completedAt}`
+                    : startedAt
+                      ? ` · Started ${startedAt}`
+                      : ""}
                 </small>
                 {program.next_meditation && !isComplete && (
-                  <small>Continue with · {program.next_meditation.title}</small>
+                  <small className="account-program-current">
+                    Continue with · {program.next_meditation.title}
+                  </small>
                 )}
                 <i><b style={{ width: `${program.completion_percent}%` }} /></i>
               </div>

@@ -5,6 +5,9 @@ import { formatDuration } from "../components/MeditationCard";
 import { API_BASE_URL } from "../config";
 import { useAuth } from "../context/AuthContext";
 
+const formatDate = (value) =>
+  value ? new Date(value).toLocaleDateString() : "";
+
 export default function ProgramDetail() {
   const { programId } = useParams();
   const navigate = useNavigate();
@@ -60,12 +63,14 @@ export default function ProgramDetail() {
   const completedMeditations = program.completed_meditations ?? 0;
   const completionPercent = program.completion_percent ?? 0;
   const firstMeditation = program.meditations?.[0]?.meditation ?? null;
-  const nextProgramItem = program.meditations.find((item) => !item.is_completed) ?? null;
+  const fallbackNextProgramItem = program.meditations.find((item) => !item.is_completed) ?? null;
   const nextMeditation =
     program.next_meditation ||
-    nextProgramItem?.meditation ||
+    fallbackNextProgramItem?.meditation ||
     firstMeditation;
   const isProgramComplete = totalMeditations > 0 && completedMeditations === totalMeditations;
+  const completedDate = formatDate(program.enrollment_completed_at);
+  const startedDate = formatDate(program.enrollment_started_at);
 
   const handleProgramAction = async () => {
     if (!user) {
@@ -118,10 +123,29 @@ export default function ProgramDetail() {
           {program.is_enrolled && (
             <div className="program-detail-progress">
               <div>
-                <span>{completedMeditations} of {totalMeditations} completed</span>
-                <strong>{completionPercent}% complete</strong>
+                <span>
+                  {isProgramComplete && completedDate
+                    ? `Completed ${completedDate}`
+                    : startedDate
+                      ? `Started ${startedDate}`
+                      : `${completedMeditations} of ${totalMeditations} completed`}
+                </span>
+                <strong>
+                  {isProgramComplete
+                    ? "✓ Program complete"
+                    : `${completionPercent}% complete`}
+                </strong>
               </div>
               <i><b style={{ width: `${completionPercent}%` }} /></i>
+              {isProgramComplete ? (
+                <p className="program-detail-progress__note">
+                  This guided path is saved in your completed programs.
+                </p>
+              ) : program.next_meditation ? (
+                <p className="program-detail-progress__note">
+                  Continue with {program.next_meditation.title}.
+                </p>
+              ) : null}
             </div>
           )}
           <button
@@ -150,7 +174,7 @@ export default function ProgramDetail() {
         </div>
         <div className="program-step-list">
           {program.meditations.map((item) => {
-            const isNextUp = program.is_enrolled && nextProgramItem?.meditation.id === item.meditation.id;
+            const isNextUp = program.is_enrolled && nextMeditation?.id === item.meditation.id;
             const isInProgress = program.is_enrolled && item.is_started && !item.is_completed;
             const statusLabel = item.is_completed
               ? "Completed"

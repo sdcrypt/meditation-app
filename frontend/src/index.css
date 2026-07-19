@@ -348,6 +348,7 @@ button { cursor: pointer; }
 .program-detail-progress div { display:flex; align-items:center; justify-content:space-between; gap:15px; margin-bottom:11px; }
 .program-detail-progress span { color:#6f8079; font-size:11px; }
 .program-detail-progress strong { color:#23584e; font-size:12px; }
+.program-detail-progress__note { margin:12px 0 0 !important; color:#79877f !important; font-size:10px !important; line-height:1.5 !important; }
 .program-start-button { min-height:46px; margin-top:22px; padding:0 20px; border:0; border-radius:999px; color:white; background:#23584e; box-shadow:0 13px 28px rgba(30,72,64,.14); font-size:11px; font-weight:700; }
 .program-start-button.is-started { color:#27584e; background:#dcebe2; box-shadow:none; }
 .program-start-button:disabled { cursor:default; opacity:.8; }
@@ -430,7 +431,9 @@ button { cursor: pointer; }
 .detail-meta span { color:#98a19d; font-size:8px; letter-spacing:.7px; text-transform:uppercase; }
 .detail-meta strong { font-family:"Playfair Display",serif; font-size:15px; font-weight:500; text-transform:capitalize; }
 .detail-program-card { display:flex; align-items:center; justify-content:space-between; gap:18px; margin:0 0 25px; padding:16px; border:1px solid #d9ded5; border-radius:17px; background:#fbfaf6; box-shadow:0 12px 28px rgba(28,71,63,.06); }
+.detail-program-card.is-complete { border-color:#bfd9c5; background:linear-gradient(135deg,#f3f8f1,#fbfaf6); }
 .detail-program-card span { color:#bd7058; font-size:8px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; }
+.detail-program-card.is-complete span { color:#3f786a; }
 .detail-program-card strong { display:block; margin-top:5px; color:#244e46; font-family:"Playfair Display",serif; font-size:20px; font-weight:500; }
 .detail-program-card p { margin:7px 0 0; color:#7d8b85; font-size:10px; line-height:1.55; }
 .detail-program-card__actions { flex:0 0 auto; display:flex; align-items:center; gap:9px; }
@@ -639,6 +642,7 @@ button { cursor: pointer; }
 .account-program-item span { color:#bd7058; font-size:8px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; }
 .account-program-item strong { display:block; overflow:hidden; margin:5px 0 4px; color:#254d45; font-family:"Playfair Display",serif; font-size:21px; line-height:1.1; font-weight:500; white-space:nowrap; text-overflow:ellipsis; }
 .account-program-item small { display:block; color:#87938d; font-size:9px; }
+.account-program-current { margin-top:4px; color:#a06b39 !important; font-weight:700; }
 .account-program-item i { display:block; overflow:hidden; height:5px; margin-top:10px; border-radius:999px; background:#e4e7e1; }
 .account-program-item i b { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#bd7058,#23584e); }
 .account-program-item em { min-width:72px; padding:7px 9px; border-radius:999px; color:#35685d; background:#dfece1; text-align:center; font-size:9px; font-style:normal; font-weight:700; }

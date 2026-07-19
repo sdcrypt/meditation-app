@@ -127,6 +127,8 @@ def program_to_read(
         created_at=program.created_at,
         updated_at=program.updated_at,
         is_enrolled=is_enrolled,
+        enrollment_started_at=enrollment.started_at if enrollment is not None else None,
+        enrollment_completed_at=enrollment.completed_at if enrollment is not None else None,
         completed_meditations=completed_meditations,
         total_meditations=total_meditations,
         completion_percent=completion_percent,

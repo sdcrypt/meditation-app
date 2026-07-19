@@ -13,6 +13,9 @@ const BackIcon = () => (
   </svg>
 );
 
+const formatDate = (value) =>
+  value ? new Date(value).toLocaleDateString() : "";
+
 export default function MeditationDetail() {
   const { meditationId } = useParams();
   const navigate = useNavigate();
@@ -123,6 +126,7 @@ export default function MeditationDetail() {
     program.total_meditations > 0 &&
     program.completed_meditations >= program.total_meditations
   );
+  const completedDate = formatDate(program?.enrollment_completed_at);
 
   const handleProgramNextAction = () => {
     if (nextProgramMeditation) {
@@ -169,14 +173,22 @@ export default function MeditationDetail() {
             </div>
 
             {program && currentProgramItem && (
-              <section className="detail-program-card">
+              <section className={`detail-program-card ${isProgramComplete ? "is-complete" : ""}`}>
                 <div>
-                  <span>Part of {program.title}</span>
-                  <strong>Step {currentProgramItem.position} of {program.total_meditations}</strong>
-                  {nextProgramMeditation ? (
+                  <span>{isProgramComplete ? "Program complete" : `Part of ${program.title}`}</span>
+                  <strong>
+                    {isProgramComplete
+                      ? `You completed ${program.title}`
+                      : `Step ${currentProgramItem.position} of ${program.total_meditations}`}
+                  </strong>
+                  {isProgramComplete ? (
+                    <p>
+                      {completedDate
+                        ? `Completed ${completedDate}. Your full path is saved in Account.`
+                        : "Your full path is saved in Account."}
+                    </p>
+                  ) : nextProgramMeditation ? (
                     <p>Next in program · {nextProgramMeditation.title}</p>
-                  ) : isProgramComplete ? (
-                    <p>This program is complete.</p>
                   ) : (
                     <p>Final meditation in this program.</p>
                   )}

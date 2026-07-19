@@ -70,6 +70,8 @@ class ProgramRead(ProgramBase):
     created_at: datetime
     updated_at: datetime
     is_enrolled: bool = False
+    enrollment_started_at: datetime | None = None
+    enrollment_completed_at: datetime | None = None
     completed_meditations: int = 0
     total_meditations: int = 0
     completion_percent: int = 0
