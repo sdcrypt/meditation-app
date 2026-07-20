@@ -86,6 +86,12 @@ def send_with_brevo(to_email: str, subject: str, text_body: str, html_body: str)
         with urlopen(request, timeout=10) as response:
             if response.status >= 300:
                 raise RuntimeError(f"Brevo returned status {response.status}")
+            response_body = response.read().decode("utf-8", errors="replace")
+            try:
+                message_id = json.loads(response_body).get("messageId")
+            except json.JSONDecodeError:
+                message_id = None
+            logger.info("Brevo accepted password reset email for %s message_id=%s", to_email, message_id)
     except HTTPError as error:
         body = error.read().decode("utf-8", errors="replace")
         logger.warning("Brevo password reset email failed: status=%s body=%s", error.code, body)
