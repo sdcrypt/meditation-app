@@ -1,6 +1,4 @@
 import json
-import smtplib
-from email.message import EmailMessage
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -36,64 +34,62 @@ def build_password_reset_email(reset_url: str) -> tuple[str, str, str]:
 
 
 def send_password_reset_email(to_email: str, reset_url: str) -> bool:
-    """Send a password reset email with the configured email provider."""
+    """Send a password reset email using Brevo when email is enabled."""
     if settings.EMAIL_PROVIDER == "none":
         logger.info("Email provider disabled; password reset link for %s: %s", to_email, reset_url)
         return False
 
+    if settings.EMAIL_PROVIDER != "brevo":
+        raise RuntimeError("Unsupported email provider")
+
     subject, text_body, html_body = build_password_reset_email(reset_url)
-    if settings.EMAIL_PROVIDER == "resend":
-        send_with_resend(to_email, subject, text_body, html_body)
-        return True
-    if settings.EMAIL_PROVIDER == "smtp":
-        send_with_smtp(to_email, subject, text_body, html_body)
-        return True
-    return False
+    send_with_brevo(to_email, subject, text_body, html_body)
+    return True
 
 
-def send_with_resend(to_email: str, subject: str, text_body: str, html_body: str) -> None:
-    """Send an email using the Resend HTTP API."""
+def parse_sender() -> tuple[str, str]:
+    """Split the configured sender into a display name and email address."""
+    sender = settings.EMAIL_FROM.strip()
+    if "<" in sender and sender.endswith(">"):
+        name, email = sender.rsplit("<", 1)
+        return name.strip().strip('"') or "Still", email[:-1].strip()
+    return "Still", sender
+
+
+def send_with_brevo(to_email: str, subject: str, text_body: str, html_body: str) -> None:
+    """Send an email using Brevo transactional email."""
+    if not settings.BREVO_API_KEY:
+        raise RuntimeError("BREVO_API_KEY is required when EMAIL_PROVIDER=brevo")
+
+    sender_name, sender_email = parse_sender()
     payload = json.dumps(
         {
-            "from": settings.EMAIL_FROM,
-            "to": [to_email],
+            "sender": {"name": sender_name, "email": sender_email},
+            "to": [{"email": to_email}],
             "subject": subject,
-            "text": text_body,
-            "html": html_body,
+            "textContent": text_body,
+            "htmlContent": html_body,
         }
     ).encode("utf-8")
     request = Request(
-        "https://api.resend.com/emails",
+        "https://api.brevo.com/v3/smtp/email",
         data=payload,
         method="POST",
         headers={
-            "Authorization": f"Bearer {settings.RESEND_API_KEY}",
-            "Content-Type": "application/json",
+            "accept": "application/json",
+            "api-key": settings.BREVO_API_KEY,
+            "content-type": "application/json",
         },
     )
+
     try:
         with urlopen(request, timeout=10) as response:
             if response.status >= 300:
-                raise RuntimeError(f"Resend returned status {response.status}")
-    except (HTTPError, URLError, TimeoutError) as error:
-        raise RuntimeError("Unable to send password reset email with Resend") from error
-
-
-def send_with_smtp(to_email: str, subject: str, text_body: str, html_body: str) -> None:
-    """Send an email using an SMTP server."""
-    message = EmailMessage()
-    message["Subject"] = subject
-    message["From"] = settings.EMAIL_FROM
-    message["To"] = to_email
-    message.set_content(text_body)
-    message.add_alternative(html_body, subtype="html")
-
-    try:
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
-            if settings.SMTP_USE_TLS:
-                server.starttls()
-            if settings.SMTP_USERNAME:
-                server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
-            server.send_message(message)
-    except OSError as error:
-        raise RuntimeError("Unable to send password reset email with SMTP") from error
+                raise RuntimeError(f"Brevo returned status {response.status}")
+    except HTTPError as error:
+        body = error.read().decode("utf-8", errors="replace")
+        logger.warning("Brevo password reset email failed: status=%s body=%s", error.code, body)
+        raise RuntimeError("Unable to send password reset email with Brevo") from error
+    except (URLError, TimeoutError) as error:
+        logger.warning("Brevo password reset email failed: %s", error)
+        raise RuntimeError("Unable to send password reset email with Brevo") from error

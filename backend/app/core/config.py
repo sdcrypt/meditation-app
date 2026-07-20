@@ -47,12 +47,7 @@ class Settings(BaseSettings):
     # Email
     EMAIL_PROVIDER: str = "none"
     EMAIL_FROM: str = "Still <no-reply@example.com>"
-    RESEND_API_KEY: str = ""
-    SMTP_HOST: str = ""
-    SMTP_PORT: int = 587
-    SMTP_USERNAME: str = ""
-    SMTP_PASSWORD: str = ""
-    SMTP_USE_TLS: bool = True
+    BREVO_API_KEY: str = ""
 
     @field_validator("AUTH_COOKIE_SAMESITE")
     @classmethod
@@ -68,9 +63,18 @@ class Settings(BaseSettings):
     def validate_email_provider(cls, value: str) -> str:
         """Keep email provider values explicit and predictable."""
         normalized = value.lower()
-        if normalized not in {"none", "resend", "smtp"}:
-            raise ValueError("EMAIL_PROVIDER must be none, resend, or smtp")
+        if normalized not in {"none", "brevo"}:
+            raise ValueError("EMAIL_PROVIDER must be none or brevo")
         return normalized
+
+    @field_validator("AUTH_COOKIE_DOMAIN", mode="before")
+    @classmethod
+    def empty_cookie_domain_as_none(cls, value: str | None) -> str | None:
+        """Treat an empty cookie domain as unset."""
+        if value is None:
+            return None
+        value = str(value).strip()
+        return value or None
 
     @model_validator(mode="after")
     def validate_production_auth_settings(self):
@@ -85,13 +89,9 @@ class Settings(BaseSettings):
             if self.JWT_SECRET_KEY == "development-only-change-me":
                 raise ValueError("JWT_SECRET_KEY must be changed in production")
             if self.EMAIL_PROVIDER == "none":
-                raise ValueError("EMAIL_PROVIDER must be resend or smtp in production")
-            if self.EMAIL_PROVIDER == "resend" and not self.RESEND_API_KEY:
-                raise ValueError("RESEND_API_KEY is required when EMAIL_PROVIDER=resend")
-            if self.EMAIL_PROVIDER == "smtp" and (
-                not self.SMTP_HOST or not self.SMTP_USERNAME or not self.SMTP_PASSWORD
-            ):
-                raise ValueError("SMTP_HOST, SMTP_USERNAME, and SMTP_PASSWORD are required when EMAIL_PROVIDER=smtp")
+                raise ValueError("EMAIL_PROVIDER must be brevo in production")
+            if self.EMAIL_PROVIDER == "brevo" and not self.BREVO_API_KEY:
+                raise ValueError("BREVO_API_KEY is required when EMAIL_PROVIDER=brevo")
         return self
 
     class Config:
