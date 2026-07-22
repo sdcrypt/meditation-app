@@ -696,6 +696,7 @@ FRONTEND_URL=https://stillmorrow.in
 PASSWORD_RESET_URL_BASE=https://stillmorrow.in/reset-password
 CORS_ORIGINS=["https://stillmorrow.in","https://www.stillmorrow.in"]
 AUTH_COOKIE_SECURE=true
+AUTH_COOKIE_DOMAIN=.stillmorrow.in
 EMAIL_PROVIDER=brevo
 EMAIL_FROM=Still <no-reply@stillmorrow.in>
 ```
@@ -708,6 +709,82 @@ openssl rand -hex 32
 
 Changing `JWT_SECRET_KEY` logs out existing users because old session cookies
 can no longer be verified.
+
+## Production deployment target
+
+The recommended production setup is:
+
+- Frontend: Vercel
+- Backend: Render web service
+- Database: Render Postgres
+- Media: AWS S3
+- Email: Brevo
+
+Production domains:
+
+- `https://stillmorrow.in` for the frontend
+- `https://www.stillmorrow.in` for the frontend
+- `https://api.stillmorrow.in` for the backend
+
+### Render backend deployment
+
+The repository includes `render.yaml` for Render Blueprint deployment.
+
+It creates:
+
+- `still-api` web service
+- `still-postgres` managed Postgres database
+
+The backend Docker image uses `backend/start.sh`, which runs:
+
+```bash
+alembic upgrade head
+uvicorn app.main:app --host 0.0.0.0 --port "$PORT"
+```
+
+Render provides `$PORT`; local Docker falls back to `8000`.
+
+After creating the Render Blueprint, fill these Render environment variables
+manually because they are marked as secrets:
+
+- `AWS_ACCESS_KEY`
+- `AWS_SECRET_KEY`
+- `AWS_S3_BUCKET`
+- `BREVO_API_KEY`
+
+Render generates:
+
+- `JWT_SECRET_KEY`
+- `ADMIN_API_KEY`
+
+Set the backend custom domain in Render:
+
+```txt
+api.stillmorrow.in
+```
+
+Then add the DNS record Render provides in your domain DNS manager.
+
+### Vercel frontend deployment
+
+Deploy the `frontend/` directory as the Vercel project root.
+
+Vercel settings:
+
+- Framework preset: Vite
+- Build command: `npm run build`
+- Output directory: `dist`
+- Install command: `npm install`
+
+Production environment variable:
+
+```env
+VITE_API_BASE_URL=https://api.stillmorrow.in/api/v1
+```
+
+The frontend includes `frontend/vercel.json` so direct links such as
+`/login`, `/programs`, and `/reset-password` load correctly as a single-page
+React app.
 
 ## Known limitations and production work
 

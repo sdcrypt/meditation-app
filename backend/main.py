@@ -10,4 +10,3 @@ from within the `backend/` directory.
 """
 
 from app.main import app  # noqa: F401
-

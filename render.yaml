@@ -1,0 +1,65 @@
+services:
+  - type: web
+    name: still-api
+    runtime: docker
+    plan: starter
+    region: singapore
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    dockerCommand: sh ./start.sh
+    healthCheckPath: /api/v1/health/
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: still-postgres
+          property: connectionString
+      - key: APP_ENV
+        value: production
+      - key: FRONTEND_URL
+        value: https://stillmorrow.in
+      - key: PASSWORD_RESET_URL_BASE
+        value: https://stillmorrow.in/reset-password
+      - key: CORS_ORIGINS
+        value: '["https://stillmorrow.in","https://www.stillmorrow.in"]'
+      - key: AUTH_COOKIE_SECURE
+        value: "true"
+      - key: AUTH_COOKIE_SAMESITE
+        value: lax
+      - key: AUTH_COOKIE_DOMAIN
+        value: .stillmorrow.in
+      - key: EMAIL_PROVIDER
+        value: brevo
+      - key: EMAIL_FROM
+        value: Still <no-reply@stillmorrow.in>
+      - key: AWS_REGION
+        value: ap-south-1
+      - key: AWS_S3_BUCKET
+        sync: false
+      - key: AWS_ACCESS_KEY
+        sync: false
+      - key: AWS_SECRET_KEY
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: ADMIN_API_KEY
+        generateValue: true
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+      - key: CSRF_COOKIE_NAME
+        value: still_csrf
+      - key: CSRF_HEADER_NAME
+        value: X-CSRF-Token
+      - key: CSRF_TOKEN_EXPIRE_MINUTES
+        value: "120"
+      - key: LOG_LEVEL
+        value: INFO
+
+databases:
+  - name: still-postgres
+    databaseName: meditation
+    user: still
+    plan: basic-256mb
+    region: singapore
+    postgresMajorVersion: "17"
