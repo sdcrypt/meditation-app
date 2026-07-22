@@ -649,28 +649,84 @@ cd backend
 docker compose up -d --build api
 ```
 
+## Environment files
+
+The project now separates environment configuration by deployment target.
+
+Backend templates:
+
+- `backend/.env.local.example` for local Docker/development
+- `backend/.env.staging.example` for staging
+- `backend/.env.production.example` for production
+
+Frontend templates:
+
+- `frontend/.env.local.example` for local Vite development
+- `frontend/.env.staging.example` for staging frontend builds
+- `frontend/.env.production.example` for production frontend builds
+
+For local backend development:
+
+```bash
+cp backend/.env.local.example backend/.env
+```
+
+Then fill real local values, especially:
+
+- `AWS_ACCESS_KEY`
+- `AWS_SECRET_KEY`
+- `AWS_S3_BUCKET`
+- `BREVO_API_KEY`
+- `JWT_SECRET_KEY`
+
+For local frontend development:
+
+```bash
+cp frontend/.env.local.example frontend/.env.local
+```
+
+Production values should not be committed. Add them directly in the deployment
+provider's environment/secrets UI.
+
+Production backend must use:
+
+```env
+APP_ENV=production
+FRONTEND_URL=https://stillmorrow.in
+PASSWORD_RESET_URL_BASE=https://stillmorrow.in/reset-password
+CORS_ORIGINS=["https://stillmorrow.in","https://www.stillmorrow.in"]
+AUTH_COOKIE_SECURE=true
+EMAIL_PROVIDER=brevo
+EMAIL_FROM=Still <no-reply@stillmorrow.in>
+```
+
+Generate a strong production JWT secret with:
+
+```bash
+openssl rand -hex 32
+```
+
+Changing `JWT_SECRET_KEY` logs out existing users because old session cookies
+can no longer be verified.
+
 ## Known limitations and production work
 
 Before production deployment:
 
-1. Make `JWT_SECRET_KEY` required instead of using a development fallback,
-   and rotate it for each environment.
-2. Enable `AUTH_COOKIE_SECURE=true` in HTTPS environments and add CSRF
-   protection if cross-site cookie flows are introduced.
-3. Pin and audit all backend dependency versions.
-4. Move the frontend API base URL into Vite environment configuration.
-5. Add password reset, email verification, and account recovery.
-6. Associate preferences, favorites, history, and progress with authenticated
-   users for cross-device synchronization.
-7. Replace random numeric device IDs with cryptographically strong anonymous
+1. Move production secrets into the hosting provider's secret manager.
+2. Use a managed Postgres database with backups.
+3. Run backend migrations as part of deployment.
+4. Verify secure cookies, CSRF, CORS, and password reset on the real HTTPS
+   domains.
+5. Pin and audit all backend dependency versions.
+6. Replace random numeric device IDs with cryptographically strong anonymous
    identifiers during the transition to accounts.
-8. Add rate limiting to authentication, session, and upload endpoints.
-9. Add structured API and frontend automated test suites.
-10. Add production monitoring, error reporting, backups, and migration
+7. Add structured API and frontend automated test suites.
+8. Add production monitoring, error reporting, backups, and migration
     procedures.
-11. Serve media through private S3 objects and signed URLs or a CDN where
+9. Serve media through private S3 objects and signed URLs or a CDN where
     appropriate.
-12. Configure production CORS origins and remove development defaults.
+10. Configure production CORS origins and remove development defaults.
 
 ## Planned product work
 

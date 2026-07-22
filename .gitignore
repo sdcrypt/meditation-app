@@ -1,6 +1,16 @@
 # Environment / Secrets
 .env
-.env.example
+.env.local
+.env.staging
+.env.production
+*.env
+*.env.local
+*.env.staging
+*.env.production
+!.env.example
+!.env.local.example
+!.env.staging.example
+!.env.production.example
 
 # Python
 __pycache__/
