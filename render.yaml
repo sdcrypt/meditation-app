@@ -2,7 +2,7 @@ services:
   - type: web
     name: still-api
     runtime: docker
-    plan: starter
+    plan: free
     region: singapore
     dockerfilePath: backend/Dockerfile
     dockerContext: backend
@@ -60,6 +60,6 @@ databases:
   - name: still-postgres
     databaseName: meditation
     user: still
-    plan: basic-256mb
+    plan: free
     region: singapore
     postgresMajorVersion: "17"

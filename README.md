@@ -735,6 +735,18 @@ It creates:
 - `still-api` web service
 - `still-postgres` managed Postgres database
 
+The checked-in Blueprint uses Render's free instance types so the app can be
+shared with testers before paying for hosting. Render free services are not
+appropriate for final production:
+
+- the backend can sleep after idle time
+- the first request after sleep can be slow
+- free Postgres expires after 30 days
+- free Postgres does not include backups
+
+Before a real launch, upgrade the backend and database plans in `render.yaml`
+or in the Render dashboard.
+
 The backend Docker image uses `backend/start.sh`, which runs:
 
 ```bash
