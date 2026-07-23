@@ -209,6 +209,17 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState("");
   const [notice, setNotice] = useState("");
+  const [expandedSections, setExpandedSections] = useState({
+    meditations: false,
+    programs: false,
+  });
+
+  const toggleSection = (section) => {
+    setExpandedSections((current) => ({
+      ...current,
+      [section]: !current[section],
+    }));
+  };
 
   const request = useCallback(async (path, options = {}) => {
     const response = await csrfFetch(`${API_BASE_URL}${path}`, {
@@ -608,6 +619,28 @@ export default function Admin() {
           </div>
         )}
 
+        <section className="admin-overview">
+          <article>
+            <span>Meditations</span>
+            <strong>{loading ? "…" : meditations.length}</strong>
+            <button type="button" onClick={() => toggleSection("meditations")}>
+              {expandedSections.meditations ? "Hide library" : "Manage library"}
+            </button>
+          </article>
+          <article>
+            <span>Programs</span>
+            <strong>{programs.length}</strong>
+            <button type="button" onClick={() => toggleSection("programs")}>
+              {expandedSections.programs ? "Hide programs" : "Manage programs"}
+            </button>
+          </article>
+          <article>
+            <span>Daily workflow</span>
+            <strong>Import → Create → Manage</strong>
+            <p>Use the top sections for new content. Open management only when editing existing items.</p>
+          </article>
+        </section>
+
         <section className="admin-create admin-bulk-import">
           <div className="admin-section-title">
             <span>00</span>
@@ -866,17 +899,34 @@ export default function Admin() {
         <section className="admin-library">
           <div className="admin-section-title">
             <span>02</span>
-            <div><h2>Existing meditations</h2><p>{meditations.length} items in your library</p></div>
+            <div><h2>Existing meditations</h2><p>{meditations.length} items in your library. Collapsed by default to keep this page focused.</p></div>
+            <button
+              className="admin-collapse-button"
+              type="button"
+              onClick={() => toggleSection("meditations")}
+            >
+              {expandedSections.meditations ? "Collapse" : "Open library"}
+            </button>
           </div>
 
-          {loading && <div className="admin-empty">Loading your library…</div>}
-          {!loading && meditations.length === 0 && (
-            <div className="admin-empty">No meditations yet. Create the first one above.</div>
-          )}
+          {!expandedSections.meditations ? (
+            <div className="admin-collapsed-summary">
+              <div>
+                <strong>{loading ? "Loading…" : `${meditations.length} meditations ready`}</strong>
+                <p>Open this section only when you need to edit artwork, audio, descriptions, tags, publishing, or delete content.</p>
+              </div>
+              <button type="button" onClick={() => toggleSection("meditations")}>Open meditation library</button>
+            </div>
+          ) : (
+            <>
+              {loading && <div className="admin-empty">Loading your library…</div>}
+              {!loading && meditations.length === 0 && (
+                <div className="admin-empty">No meditations yet. Create the first one above.</div>
+              )}
 
-          <div className="admin-card-list">
-            {meditations.map((meditation) => (
-              <article className="admin-card" key={meditation.id}>
+              <div className="admin-card-list">
+                {meditations.map((meditation) => (
+                  <article className="admin-card" key={meditation.id}>
                 <aside className="admin-card__media">
                   {meditation.artwork_url ? (
                     <img src={meditation.artwork_url} alt="" />
@@ -986,18 +1036,37 @@ export default function Admin() {
                     </div>
                   </div>
                 </div>
-              </article>
-            ))}
-          </div>
+                  </article>
+                ))}
+              </div>
+            </>
+          )}
         </section>
 
         <section className="admin-library admin-programs">
           <div className="admin-section-title">
             <span>03</span>
-            <div><h2>Programs</h2><p>Create guided paths from ordered meditation sequences.</p></div>
+            <div><h2>Programs</h2><p>Create and manage guided paths from ordered meditation sequences.</p></div>
+            <button
+              className="admin-collapse-button"
+              type="button"
+              onClick={() => toggleSection("programs")}
+            >
+              {expandedSections.programs ? "Collapse" : "Open programs"}
+            </button>
           </div>
 
-          <form className="admin-program-create" onSubmit={handleCreateProgram}>
+          {!expandedSections.programs ? (
+            <div className="admin-collapsed-summary">
+              <div>
+                <strong>{programs.length} programs configured</strong>
+                <p>Open this section when you need to create a program, order meditations, replace artwork, or update publishing.</p>
+              </div>
+              <button type="button" onClick={() => toggleSection("programs")}>Open program manager</button>
+            </div>
+          ) : (
+            <>
+              <form className="admin-program-create" onSubmit={handleCreateProgram}>
             <div className="admin-form-grid">
               <label className="admin-field admin-field--wide">
                 <span>Program title</span>
@@ -1061,11 +1130,11 @@ export default function Admin() {
               </div>
               <button className="admin-primary-button" type="submit">Create program</button>
             </div>
-          </form>
+              </form>
 
-          <div className="admin-program-list">
-            {programs.map((program) => (
-              <article className="admin-program-card" key={program.id}>
+              <div className="admin-program-list">
+                {programs.map((program) => (
+                  <article className="admin-program-card" key={program.id}>
                 <div className="admin-form-grid admin-form-grid--edit">
                   <label className="admin-field admin-field--wide">
                     <span>Title</span>
@@ -1145,9 +1214,11 @@ export default function Admin() {
                     </button>
                   </div>
                 </div>
-              </article>
-            ))}
-          </div>
+                  </article>
+                ))}
+              </div>
+            </>
+          )}
         </section>
       </div>
     </main>
