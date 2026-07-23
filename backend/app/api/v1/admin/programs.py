@@ -1,10 +1,11 @@
 import csv
-from io import BytesIO, TextIOWrapper
+from io import BytesIO, StringIO, TextIOWrapper
 import mimetypes
 from pathlib import PurePath
 import zipfile
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 
@@ -52,6 +53,55 @@ def list_all_programs(db: Session = Depends(get_db)):
         Program.id.desc(),
     ).all()
     return [program_to_read(db, program) for program in programs]
+
+
+@router.get("/export.csv", dependencies=[Depends(require_admin)])
+def export_programs_csv(db: Session = Depends(get_db)):
+    """Download all programs and ordered meditation details as a CSV backup."""
+    output = StringIO()
+    fieldnames = [
+        "id",
+        "title",
+        "description",
+        "goal",
+        "level",
+        "is_published",
+        "artwork_url",
+        "meditation_ids",
+        "meditation_titles",
+        "created_at",
+        "updated_at",
+    ]
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
+    writer.writeheader()
+    programs = db.query(Program).order_by(Program.id.asc()).all()
+    for program in programs:
+        rows = db.query(ProgramMeditation, Meditation).join(
+            Meditation,
+            Meditation.id == ProgramMeditation.meditation_id,
+        ).filter(
+            ProgramMeditation.program_id == program.id,
+        ).order_by(ProgramMeditation.position.asc()).all()
+        writer.writerow(
+            {
+                "id": program.id,
+                "title": program.title,
+                "description": program.description,
+                "goal": program.goal,
+                "level": program.level,
+                "is_published": program.is_published,
+                "artwork_url": program.artwork_url or "",
+                "meditation_ids": "|".join(str(meditation.id) for _, meditation in rows),
+                "meditation_titles": "|".join(meditation.title for _, meditation in rows),
+                "created_at": program.created_at.isoformat() if program.created_at else "",
+                "updated_at": program.updated_at.isoformat() if program.updated_at else "",
+            }
+        )
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="programs-backup.csv"'},
+    )
 
 
 @router.post("/", response_model=ProgramRead, dependencies=[Depends(require_admin)])

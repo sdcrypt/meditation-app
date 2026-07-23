@@ -1,10 +1,11 @@
 import csv
-from io import BytesIO, TextIOWrapper
+from io import BytesIO, StringIO, TextIOWrapper
 import mimetypes
 from pathlib import PurePath
 import zipfile
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
@@ -58,6 +59,61 @@ def list_all_meditations(db: Session = Depends(get_db)):
         Meditation.created_at.desc(),
         Meditation.id.desc(),
     ).all()
+
+
+def join_list(values: list[str] | None, separator: str) -> str:
+    """Join list values into a single CSV cell."""
+    if not values:
+        return ""
+    return separator.join(str(item).strip() for item in values if str(item).strip())
+
+
+@router.get("/export.csv", dependencies=[Depends(require_admin)])
+def export_meditations_csv(db: Session = Depends(get_db)):
+    """Download all meditations as a CSV backup for production content."""
+    output = StringIO()
+    fieldnames = [
+        "id",
+        "title",
+        "category",
+        "duration_sec",
+        "level",
+        "description",
+        "teacher_name",
+        "tags",
+        "benefits",
+        "is_featured",
+        "is_published",
+        "audio_url",
+        "artwork_url",
+        "created_at",
+    ]
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
+    writer.writeheader()
+    for meditation in db.query(Meditation).order_by(Meditation.id.asc()).all():
+        writer.writerow(
+            {
+                "id": meditation.id,
+                "title": meditation.title,
+                "category": meditation.category,
+                "duration_sec": meditation.duration_sec,
+                "level": meditation.level,
+                "description": meditation.description,
+                "teacher_name": meditation.teacher_name,
+                "tags": join_list(meditation.tags, ","),
+                "benefits": join_list(meditation.benefits, "|"),
+                "is_featured": meditation.is_featured,
+                "is_published": meditation.is_published,
+                "audio_url": meditation.audio_url or "",
+                "artwork_url": meditation.artwork_url or "",
+                "created_at": meditation.created_at.isoformat() if meditation.created_at else "",
+            }
+        )
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="meditations-backup.csv"'},
+    )
 
 
 @router.post("/", response_model=MeditationRead, dependencies=[Depends(require_admin)])

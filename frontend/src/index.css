@@ -708,6 +708,12 @@ button { cursor: pointer; }
 .admin-overview strong { display:block; margin:10px 0 13px; color:#214a42; font-family:"Playfair Display",serif; font-size:30px; line-height:1; font-weight:500; }
 .admin-overview p { margin:0; color:#7a8781; font-size:10px; line-height:1.55; }
 .admin-overview button,.admin-collapse-button,.admin-collapsed-summary button { min-height:34px; padding:0 13px; border:1px solid #d8c0b3; border-radius:999px; color:#945d49; background:#f3e2d9; font-size:9px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; cursor:pointer; }
+.admin-backup-export { margin-bottom:26px; border-color:#ccd9d0; background:#f7faf5; }
+.admin-export-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+.admin-export-grid article { padding:20px; border:1px solid #dce3db; border-radius:16px; background:white; }
+.admin-export-grid strong { display:block; color:#244e46; font-family:"Playfair Display",serif; font-size:22px; font-weight:500; }
+.admin-export-grid p { min-height:50px; margin:8px 0 18px; color:#75837c; font-size:11px; line-height:1.6; }
+.admin-export-grid button { min-height:38px; padding:0 15px; border:0; border-radius:999px; color:white; background:#23584e; font-size:9px; font-weight:800; letter-spacing:.7px; text-transform:uppercase; cursor:pointer; }
 .admin-programs { margin-top:55px; }
 .admin-program-create,.admin-program-card { margin-bottom:18px; padding:22px; border:1px solid #dcded7; border-radius:18px; background:#fbfaf6; }
 .admin-program-list { display:flex; flex-direction:column; gap:16px; }
@@ -875,6 +881,7 @@ button { cursor: pointer; }
   .admin-shell { width:min(100% - 28px,1180px); }
   .admin-heading h1 { font-size:40px; }
   .admin-overview { grid-template-columns:1fr; }
+  .admin-export-grid { grid-template-columns:1fr; }
   .admin-create,.admin-library { padding:22px 17px; }
   .admin-section-title { flex-wrap:wrap; }
   .admin-template-button,.admin-collapse-button { width:100%; margin-left:44px; }

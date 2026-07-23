@@ -554,6 +554,32 @@ export default function Admin() {
     }
   };
 
+  const downloadAdminExport = async (path, filename) => {
+    setPageError("");
+    setNotice("");
+    try {
+      const response = await csrfFetch(`${API_BASE_URL}${path}`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(getErrorMessage(payload, `Export failed: ${response.status}`));
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setNotice(`${filename} downloaded.`);
+    } catch (error) {
+      setPageError(error.message);
+    }
+  };
+
   const updateProgram = async (program) => {
     setSavingId(`program-${program.id}`);
     setPageError("");
@@ -639,6 +665,38 @@ export default function Admin() {
             <strong>Import → Create → Manage</strong>
             <p>Use the top sections for new content. Open management only when editing existing items.</p>
           </article>
+        </section>
+
+        <section className="admin-create admin-backup-export">
+          <div className="admin-section-title">
+            <span>BK</span>
+            <div>
+              <h2>Backup exports</h2>
+              <p>Download production content as CSV before major edits, imports, or deployments.</p>
+            </div>
+          </div>
+          <div className="admin-export-grid">
+            <article>
+              <strong>Meditations CSV</strong>
+              <p>Exports audio URLs, artwork URLs, teacher, description, tags, benefits, publish status, and featured status.</p>
+              <button
+                type="button"
+                onClick={() => downloadAdminExport("/admin/meditations/export.csv", "meditations-backup.csv")}
+              >
+                Download meditations
+              </button>
+            </article>
+            <article>
+              <strong>Programs CSV</strong>
+              <p>Exports program details, artwork URL, publish status, and ordered meditation IDs/titles.</p>
+              <button
+                type="button"
+                onClick={() => downloadAdminExport("/admin/programs/export.csv", "programs-backup.csv")}
+              >
+                Download programs
+              </button>
+            </article>
+          </div>
         </section>
 
         <section className="admin-create admin-bulk-import">
