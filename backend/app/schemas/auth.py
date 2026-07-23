@@ -48,6 +48,8 @@ class UserRead(BaseModel):
     email: EmailStr
     is_admin: bool
     is_active: bool
+    email_verified_at: datetime | None = None
+    is_email_verified: bool
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -92,3 +94,14 @@ class PasswordResetConfirm(BaseModel):
     def validate_password_strength(cls, value: str) -> str:
         """Require the same password strength used during registration."""
         return UserRegister.validate_password_strength(value)
+
+
+class EmailVerificationResult(BaseModel):
+    """Response returned after email verification actions."""
+    message: str
+    verification_url: str | None = None
+
+
+class EmailVerificationConfirm(BaseModel):
+    """Token submitted from an email verification link."""
+    token: str = Field(min_length=20, max_length=300)

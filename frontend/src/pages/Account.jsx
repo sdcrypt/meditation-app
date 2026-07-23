@@ -242,7 +242,7 @@ export default function Account() {
           </div>
           <div className="account-profile-card">
             <span>{user.is_admin ? "Administrator" : "Member"}</span>
-            <strong>Active</strong>
+            <strong>{user.is_email_verified ? "Verified" : "Email not verified"}</strong>
             <small>Joined {new Date(user.created_at).toLocaleDateString()}</small>
           </div>
         </section>

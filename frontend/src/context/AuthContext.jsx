@@ -18,6 +18,24 @@ export function AuthProvider({ children }) {
   const [isLoading, setIsLoading] = useState(true);
   const [sessionMessage, setSessionMessage] = useState("");
 
+  const refreshUser = useCallback(async () => {
+    const res = await fetch(`${API_BASE_URL}/auth/me`, {
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        setSessionMessage("Your session has expired. Please sign in again.");
+      }
+      throw new Error("Unable to validate the session");
+    }
+
+    const authenticatedUser = await res.json();
+    setUser(authenticatedUser);
+    setSessionMessage("");
+    return authenticatedUser;
+  }, []);
+
   useEffect(() => {
     localStorage.removeItem("token");
 
@@ -52,27 +70,14 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/me`, {
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        if (res.status === 401) {
-          setSessionMessage("Your session has expired. Please sign in again.");
-        }
-        throw new Error("Unable to validate the session");
-      }
-
-      const authenticatedUser = await res.json();
+      const authenticatedUser = await refreshUser();
       await syncDeviceProgress().catch(() => {});
-      setUser(authenticatedUser);
-      setSessionMessage("");
       return authenticatedUser;
     } catch (error) {
       setUser(null);
       throw error;
     }
-  }, []);
+  }, [refreshUser]);
 
   const logout = useCallback(async () => {
     localStorage.removeItem("token");
@@ -99,6 +104,7 @@ export function AuthProvider({ children }) {
       user,
       isLoading,
       login,
+      refreshUser,
       logout,
       sessionMessage,
       markSessionExpired,

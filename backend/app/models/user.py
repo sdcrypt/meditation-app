@@ -23,8 +23,14 @@ class User(Base):
         default=True,
         server_default=text("true"),
     )
+    email_verified_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),
     )
+
+    @property
+    def is_email_verified(self) -> bool:
+        """Tell whether the user has confirmed ownership of their email."""
+        return self.email_verified_at is not None

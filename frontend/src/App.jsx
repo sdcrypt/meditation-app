@@ -15,7 +15,9 @@ import Admin from "./pages/Admin";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import VerifyEmail from "./pages/VerifyEmail";
 import Account from "./pages/Account";
+import EmailVerificationBanner from "./components/EmailVerificationBanner";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AuthenticatedRoute from "./components/AuthenticatedRoute";
 import PersistentPlayer from "./components/PersistentPlayer";
@@ -89,6 +91,7 @@ export default function App() {
               </div>
             </div>
           </header>
+          <EmailVerificationBanner />
 
           <Routes>
             <Route path="/" element={<Home />} />
@@ -100,6 +103,7 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/account" element={
               <AuthenticatedRoute>
                 <Account />
