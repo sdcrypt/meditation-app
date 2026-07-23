@@ -26,6 +26,7 @@ PROGRAM_CSV_COLUMNS = {
     "goal",
     "level",
     "is_published",
+    "artwork_url",
     "artwork_filename",
     "meditation_ids",
     "meditation_titles",
@@ -305,10 +306,13 @@ def bulk_import_programs(
         program.goal = (row.get("goal") or "").strip()
         program.level = level
         program.is_published = is_published
+        program.artwork_url = (row.get("artwork_url") or "").strip() or program.artwork_url
 
         artwork_filename = row.get("artwork_filename")
         artwork_file = find_artwork_file(artwork_files, artwork_filename)
-        if artwork_filename and artwork_file is None:
+        if row.get("artwork_url"):
+            pass
+        elif artwork_filename and artwork_file is None:
             warnings.append(f"Row {row_number}: artwork file not found: {artwork_filename}")
         elif artwork_file is not None:
             artwork_key, artwork_bytes = artwork_file

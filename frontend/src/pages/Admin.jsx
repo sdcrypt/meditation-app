@@ -29,13 +29,13 @@ const EMPTY_PROGRAM = {
   meditation_search: "",
 };
 
-const MEDITATION_CSV_TEMPLATE = `title,category,duration_sec,level,description,teacher_name,tags,benefits,is_featured,is_published,audio_filename,artwork_filename
-Morning Calm,Calm,600,beginner,A gentle morning practice,Still Guide,"calm,morning,breath","Builds focus|Reduces stress",true,true,morning-calm.mp3,morning-calm.png
+const MEDITATION_CSV_TEMPLATE = `title,category,duration_sec,level,description,teacher_name,tags,benefits,is_featured,is_published,audio_url,artwork_url,audio_filename,artwork_filename
+Morning Calm,Calm,600,beginner,A gentle morning practice,Still Guide,"calm,morning,breath","Builds focus|Reduces stress",true,true,,,morning-calm.mp3,morning-calm.png
 `;
 
-const PROGRAM_CSV_TEMPLATE = `title,description,goal,level,is_published,artwork_filename,meditation_ids,meditation_titles
-7 Days of Calm,A gentle first-week path for building a steady daily pause,stress,beginner,true,7-days-calm.png,3|4|5,
-Sleep Reset,A soothing evening sequence for deeper rest,sleep,all levels,true,sleep-reset.png,,Morning Calm|Sleep Reset Intro
+const PROGRAM_CSV_TEMPLATE = `title,description,goal,level,is_published,artwork_url,artwork_filename,meditation_ids,meditation_titles
+7 Days of Calm,A gentle first-week path for building a steady daily pause,stress,beginner,true,,7-days-calm.png,3|4|5,
+Sleep Reset,A soothing evening sequence for deeper rest,sleep,all levels,true,,sleep-reset.png,,Morning Calm|Sleep Reset Intro
 `;
 
 const withDraftFields = (meditation) => ({
@@ -738,8 +738,8 @@ export default function Admin() {
               </label>
               <div className="admin-bulk-help">
                 <strong>CSV columns</strong>
-                <p>title, category, duration_sec, level, description, teacher_name, tags, benefits, is_featured, is_published, audio_filename, artwork_filename</p>
-                <small>Tags use commas. Benefits use | between items.</small>
+                <p>title, category, duration_sec, level, description, teacher_name, tags, benefits, is_featured, is_published, audio_url, artwork_url, audio_filename, artwork_filename</p>
+                <small>For restore, use audio_url/artwork_url. For new uploads, use filenames with ZIP. URLs win if both are present.</small>
               </div>
             </div>
             <button className="admin-primary-button" type="submit" disabled={bulkImporting}>
@@ -820,8 +820,8 @@ export default function Admin() {
               </label>
               <div className="admin-bulk-help">
                 <strong>Program CSV columns</strong>
-                <p>title, description, goal, level, is_published, artwork_filename, meditation_ids, meditation_titles</p>
-                <small>Use meditation_ids like 3|4|5 or exact meditation_titles like Morning Calm|Sleep Intro.</small>
+                <p>title, description, goal, level, is_published, artwork_url, artwork_filename, meditation_ids, meditation_titles</p>
+                <small>For restore, use artwork_url. For new uploads, use artwork_filename with ZIP. URLs win if both are present.</small>
               </div>
             </div>
             <button className="admin-primary-button" type="submit" disabled={programBulkImporting}>

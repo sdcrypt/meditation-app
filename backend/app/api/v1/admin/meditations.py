@@ -34,6 +34,8 @@ CSV_COLUMNS = {
     "benefits",
     "is_featured",
     "is_published",
+    "audio_url",
+    "artwork_url",
     "audio_filename",
     "artwork_filename",
 }
@@ -211,10 +213,10 @@ def build_meditation_payload(row: dict[str, str | None]) -> MeditationCreate:
         category=(row.get("category") or "").strip(),
         duration_sec=int((row.get("duration_sec") or "").strip()),
         level=(row.get("level") or "").strip(),
-        audio_url=None,
+        audio_url=(row.get("audio_url") or "").strip() or None,
         description=(row.get("description") or "").strip(),
         teacher_name=(row.get("teacher_name") or "").strip(),
-        artwork_url=None,
+        artwork_url=(row.get("artwork_url") or "").strip() or None,
         tags=split_csv_list(row.get("tags"), ","),
         benefits=split_csv_list(row.get("benefits"), "|"),
         is_featured=parse_bool(row.get("is_featured"), False),
@@ -280,7 +282,9 @@ def bulk_import_meditations(
 
         audio_filename = row.get("audio_filename")
         audio_file = find_media_file(media_files, "audio", audio_filename)
-        if audio_filename and audio_file is None:
+        if meditation.audio_url:
+            pass
+        elif audio_filename and audio_file is None:
             warnings.append(f"Row {row_number}: audio file not found: {audio_filename}")
         elif audio_file is not None:
             audio_key, audio_bytes = audio_file
@@ -297,7 +301,9 @@ def bulk_import_meditations(
 
         artwork_filename = row.get("artwork_filename")
         artwork_file = find_media_file(media_files, "artwork", artwork_filename)
-        if artwork_filename and artwork_file is None:
+        if meditation.artwork_url:
+            pass
+        elif artwork_filename and artwork_file is None:
             warnings.append(f"Row {row_number}: artwork file not found: {artwork_filename}")
         elif artwork_file is not None:
             artwork_key, artwork_bytes = artwork_file
