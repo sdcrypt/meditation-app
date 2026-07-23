@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     FRONTEND_URL: str = "http://localhost:5173"
     PASSWORD_RESET_URL_BASE: str = "http://localhost:5173/reset-password"
+    EMAIL_VERIFICATION_URL_BASE: str = "http://localhost:5173/verify-email"
 
     # CORS (React dev + prod later)
     CORS_ORIGINS: List[str] = [
@@ -86,6 +87,8 @@ class Settings(BaseSettings):
                 raise ValueError("FRONTEND_URL must use https in production")
             if not self.PASSWORD_RESET_URL_BASE.startswith("https://"):
                 raise ValueError("PASSWORD_RESET_URL_BASE must use https in production")
+            if not self.EMAIL_VERIFICATION_URL_BASE.startswith("https://"):
+                raise ValueError("EMAIL_VERIFICATION_URL_BASE must use https in production")
             if self.JWT_SECRET_KEY == "development-only-change-me":
                 raise ValueError("JWT_SECRET_KEY must be changed in production")
             if self.EMAIL_PROVIDER == "none":

@@ -663,6 +663,21 @@ button { cursor: pointer; }
 .account-program-item strong { display:block; overflow:hidden; margin:5px 0 4px; color:#254d45; font-family:"Playfair Display",serif; font-size:21px; line-height:1.1; font-weight:500; white-space:nowrap; text-overflow:ellipsis; }
 .account-program-item small { display:block; color:#87938d; font-size:9px; }
 .account-program-current { margin-top:4px; color:#a06b39 !important; font-weight:700; }
+.email-verification-banner { display:flex; justify-content:space-between; gap:18px; align-items:center; max-width:1180px; margin:18px auto 0; padding:16px 18px; border:1px solid #e9c9b8; border-radius:18px; color:#244f47; background:#f7e8dd; box-shadow:0 18px 45px rgba(77,49,31,.08); }
+.email-verification-banner div { display:flex; flex-direction:column; gap:4px; }
+.email-verification-banner strong { font-family:"Playfair Display",serif; font-size:21px; font-weight:500; }
+.email-verification-banner span,.email-verification-banner em,.email-verification-banner a { font-size:12px; color:#6d7c75; }
+.email-verification-banner em { font-style:normal; color:#2f6f60; }
+.email-verification-banner em.is-error { color:#a24e3a; }
+.email-verification-banner button,.verification-actions a { border:0; border-radius:999px; padding:11px 16px; color:#fff; background:#23584e; font-size:11px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; text-decoration:none; cursor:pointer; white-space:nowrap; }
+.email-verification-banner button:disabled { opacity:.65; cursor:not-allowed; }
+.verification-page { min-height:70vh; display:grid; place-items:center; padding:70px 18px; background:#f7f4ec; }
+.verification-card { width:min(560px,100%); padding:42px; border:1px solid #dfe3da; border-radius:26px; text-align:center; color:#214a42; background:#fffdf8; box-shadow:0 28px 80px rgba(27,66,58,.11); }
+.verification-card h1 { margin:8px 0 12px; font-family:"Playfair Display",serif; font-size:42px; line-height:1.05; font-weight:500; }
+.verification-card p:not(.eyebrow) { color:#6d7b75; line-height:1.7; }
+.verification-card--success { border-color:#b9d8ca; }
+.verification-card--error { border-color:#e6b8a8; }
+.verification-actions { display:flex; justify-content:center; gap:10px; margin-top:24px; flex-wrap:wrap; }
 .account-program-item i { display:block; overflow:hidden; height:5px; margin-top:10px; border-radius:999px; background:#e4e7e1; }
 .account-program-item i b { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#bd7058,#23584e); }
 .account-program-item em { min-width:72px; padding:7px 9px; border-radius:999px; color:#35685d; background:#dfece1; text-align:center; font-size:9px; font-style:normal; font-weight:700; }

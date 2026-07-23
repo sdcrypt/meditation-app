@@ -19,6 +19,8 @@ services:
         value: https://stillmorrow.in
       - key: PASSWORD_RESET_URL_BASE
         value: https://stillmorrow.in/reset-password
+      - key: EMAIL_VERIFICATION_URL_BASE
+        value: https://stillmorrow.in/verify-email
       - key: CORS_ORIGINS
         value: '["https://stillmorrow.in","https://www.stillmorrow.in"]'
       - key: AUTH_COOKIE_SECURE
