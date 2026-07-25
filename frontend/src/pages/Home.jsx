@@ -17,33 +17,60 @@ const ArrowIcon = () => (
 );
 
 const categoryData = [
-  { icon: "✦", title: "Sleep", text: "Drift off naturally", tone: "lilac" },
-  { icon: "◒", title: "Stress", text: "Find your calm", tone: "sage" },
-  { icon: "⌁", title: "Focus", text: "Clear your mind", tone: "sky" },
-  { icon: "♡", title: "Self-love", text: "Come home to you", tone: "peach" },
+  {
+    icon: "✦",
+    title: "Explore meditations",
+    text: "Browse guided practices by mood, duration, level, and teacher.",
+    tone: "lilac",
+    to: "/explore",
+  },
+  {
+    icon: "◒",
+    title: "Start a program",
+    text: "Follow a structured sequence like calm, sleep, or beginner mindfulness.",
+    tone: "sage",
+    to: "/programs",
+  },
+  {
+    icon: "⌁",
+    title: "Track progress",
+    text: "See mindful minutes, history, streaks, and completed sessions.",
+    tone: "sky",
+    to: "/progress",
+  },
+  {
+    icon: "♡",
+    title: "Make it yours",
+    text: "Save favorites, set preferences, and manage reminders from your account.",
+    tone: "peach",
+    to: "/account",
+  },
 ];
 
 const sessions = [
   {
-    title: "Morning Stillness",
-    teacher: "Maya Chen",
-    duration: "10 min",
+    title: "Guided meditation library",
+    description: "Artwork cards, teachers, descriptions, tags, benefits, and filters are already part of Explore.",
+    action: "Browse Explore",
+    to: "/explore",
     className: "session-art session-art--morning",
-    eyebrow: "Start your day",
+    eyebrow: "Meditations",
   },
   {
-    title: "Letting Go of Stress",
-    teacher: "Jonah Reed",
-    duration: "15 min",
+    title: "Step-by-step programs",
+    description: "Start a program, continue the next practice, and track completion across the sequence.",
+    action: "View Programs",
+    to: "/programs",
     className: "session-art session-art--stress",
-    eyebrow: "Release & restore",
+    eyebrow: "Programs",
   },
   {
-    title: "Deep Sleep Journey",
-    teacher: "Elena Silva",
-    duration: "25 min",
+    title: "Account-based practice",
+    description: "Login keeps saved meditations, preferences, reminders, and progress attached to your account.",
+    action: "Open Account",
+    to: "/account",
     className: "session-art session-art--sleep",
-    eyebrow: "Sleep deeply",
+    eyebrow: "Progress",
   },
 ];
 
@@ -58,23 +85,23 @@ export default function Home() {
             <p className="eyebrow">A quieter mind starts here</p>
             <h1>Make space for<br />what matters.</h1>
             <p className="hero__lede">
-              Guided meditations, sleep stories, and calming soundscapes
-              designed to bring more ease into your everyday.
+              A simple meditation app for guided practices, structured programs,
+              saved favorites, progress tracking, and daily email reminders.
             </p>
             <div className="hero__actions">
               <Link className="button button--primary" to="/explore">
-                Begin your journey <ArrowIcon />
+                Explore meditations <ArrowIcon />
               </Link>
-              <a className="button button--text" href="#featured">
+              <Link className="button button--text" to="/programs">
                 <span className="mini-play"><PlayIcon small /></span>
-                Try a free meditation
-              </a>
+                Browse programs
+              </Link>
             </div>
             <div className="hero__proof">
               <div className="avatar-stack" aria-hidden="true">
-                <span>AJ</span><span>ML</span><span>SK</span><span>+</span>
+                <span>01</span><span>02</span><span>03</span><span>✓</span>
               </div>
-              <p><strong>4.9</strong> <span className="stars">★★★★★</span><br />Loved by mindful people worldwide</p>
+              <p><strong>No inflated claims.</strong><br />Just the features available in the app today.</p>
             </div>
           </div>
 
@@ -95,9 +122,9 @@ export default function Home() {
                 <PlayIcon />
               </button>
               <div>
-                <span>Now playing · 10 min</span>
-                <strong>Open Sky</strong>
-                <small>with Maya Chen</small>
+                <span>Player ready</span>
+                <strong>Resume practice</strong>
+                <small>with progress saved</small>
               </div>
               <div className="sound-wave" aria-hidden="true">
                 <i /><i /><i /><i /><i />
@@ -105,8 +132,8 @@ export default function Home() {
             </div>
             <div className="breath-card">
               <span className="breath-card__dot" />
-              <div><strong>Breathe in</strong><small>Follow the rhythm</small></div>
-              <b>4</b>
+              <div><strong>Daily reminder</strong><small>Email practice nudges</small></div>
+              <b>✓</b>
             </div>
           </div>
         </div>
@@ -117,30 +144,34 @@ export default function Home() {
 
       <section className="trust-strip">
         <div className="site-shell trust-strip__inner">
-          <p>Made for your whole day</p>
+          <p>What Still supports today</p>
           <span />
-          <div><strong>2,000+</strong><small>guided practices</small></div>
-          <div><strong>85</strong><small>expert teachers</small></div>
-          <div><strong>190</strong><small>countries finding calm</small></div>
+          <div><strong>Explore</strong><small>searchable meditation library</small></div>
+          <div><strong>Programs</strong><small>ordered practice paths</small></div>
+          <div><strong>Progress</strong><small>history, minutes, streaks</small></div>
         </div>
       </section>
 
       <section className="benefits section site-shell" id="benefits">
         <div className="section-heading section-heading--center">
-          <p className="eyebrow">Whatever you need today</p>
-          <h2>A practice for every feeling</h2>
-          <p>Small moments of mindfulness can change the shape of your entire day.</p>
+          <p className="eyebrow">Start from anywhere</p>
+          <h2>Choose what you want to do next</h2>
+          <p>Each card opens a real section of the app, so the landing page is useful instead of decorative.</p>
         </div>
         <div className="category-grid">
           {categoryData.map((category) => (
-            <article className={`category-card category-card--${category.tone}`} key={category.title}>
+            <Link
+              className={`category-card category-card--${category.tone}`}
+              key={category.title}
+              to={category.to}
+            >
               <div className="category-card__icon">{category.icon}</div>
               <h3>{category.title}</h3>
               <p>{category.text}</p>
-              <a href="#featured" aria-label={`Explore ${category.title}`}>
+              <span className="category-card__arrow" aria-hidden="true">
                 <ArrowIcon />
-              </a>
-            </article>
+              </span>
+            </Link>
           ))}
         </div>
       </section>
@@ -149,30 +180,30 @@ export default function Home() {
         <div className="site-shell">
           <div className="section-heading section-heading--row">
             <div>
-              <p className="eyebrow">Curated for you</p>
-              <h2>Pause. Press play. Feel better.</h2>
+              <p className="eyebrow">Built around the real product</p>
+              <h2>Main app areas</h2>
             </div>
             <Link className="text-link" to="/explore">Explore all meditations <ArrowIcon /></Link>
           </div>
           <div className="session-grid">
             {sessions.map((session, index) => (
-              <article className="session-card" key={session.title}>
+              <Link className="session-card" key={session.title} to={session.to}>
                 <div className={session.className}>
                   <span className="session-art__eyebrow">{session.eyebrow}</span>
                   <span className="session-art__orb" />
                   <span className="session-art__ridge session-art__ridge--one" />
                   <span className="session-art__ridge session-art__ridge--two" />
-                  <button aria-label={`Play ${session.title}`}><PlayIcon /></button>
+                  <span className="session-art__action"><ArrowIcon /></span>
                   <span className="session-art__number">0{index + 1}</span>
                 </div>
                 <div className="session-card__body">
                   <div>
                     <h3>{session.title}</h3>
-                    <p>with {session.teacher}</p>
+                    <p>{session.description}</p>
                   </div>
-                  <span>{session.duration}</span>
+                  <span>{session.action}</span>
                 </div>
-              </article>
+              </Link>
             ))}
           </div>
         </div>
@@ -194,15 +225,16 @@ export default function Home() {
           </div>
           <div className="ritual__copy">
             <p className="eyebrow">Your practice, your pace</p>
-            <h2>Build a ritual that feels like you.</h2>
+            <h2>Build a practice that can continue across days.</h2>
             <p>
-              Whether you have two minutes or twenty, find thoughtful guidance
-              for the moments you need it most. No pressure. No perfection.
+              Still now supports the core loop a meditation app needs: discover
+              content, start a guided session, continue programs, save favorites,
+              and return with progress intact.
             </p>
             <ol className="ritual-steps">
-              <li><span>01</span><div><strong>Choose your intention</strong><p>Tell us how you want to feel.</p></div></li>
-              <li><span>02</span><div><strong>Find your guide</strong><p>Explore voices and practices that resonate.</p></div></li>
-              <li><span>03</span><div><strong>Make it yours</strong><p>Build a rhythm that fits your real life.</p></div></li>
+              <li><span>01</span><div><strong>Set preferences</strong><p>Choose goals, duration, experience level, and practice time.</p></div></li>
+              <li><span>02</span><div><strong>Practice from Explore or Programs</strong><p>Use filters, featured meditations, and program sequences.</p></div></li>
+              <li><span>03</span><div><strong>Return with context</strong><p>Resume audio, track history, and continue the next program step.</p></div></li>
             </ol>
             <Link className="button button--dark" to="/explore">Find your practice <ArrowIcon /></Link>
           </div>
@@ -211,15 +243,16 @@ export default function Home() {
 
       <section className="testimonial section">
         <div className="testimonial__inner site-shell">
-          <p className="eyebrow">A calmer world, together</p>
+          <p className="eyebrow">Simple and honest</p>
           <blockquote>
-            “This has become the gentlest part of my day. I arrive feeling
-            scattered and leave feeling like myself again.”
+            A landing page should explain what the app actually does, then help
+            people reach the right next screen quickly.
           </blockquote>
-          <div className="testimonial__author">
-            <span>NR</span><div><strong>Nina R.</strong><small>Practicing for 428 days</small></div>
+          <div className="testimonial__author testimonial__author--links">
+            <Link to="/explore">Explore meditations</Link>
+            <Link to="/programs">View programs</Link>
+            <Link to="/progress">Check progress</Link>
           </div>
-          <div className="testimonial__dots"><i className="active" /><i /><i /></div>
         </div>
       </section>
 
@@ -228,10 +261,10 @@ export default function Home() {
         <div className="final-cta__orb final-cta__orb--right" />
         <div className="site-shell final-cta__content">
           <p className="eyebrow">Begin with one breath</p>
-          <h2>Your calmer life is already within you.</h2>
-          <p>Join a community making more room for rest, clarity, and joy.</p>
-          <Link className="button button--cream" to="/explore">Start meditating free <ArrowIcon /></Link>
-          <small>No credit card needed · Start in under a minute</small>
+          <h2>Start with one practice, then build from there.</h2>
+          <p>Browse the meditation library or follow a structured program when you want a clear path.</p>
+          <Link className="button button--cream" to="/explore">Start meditating <ArrowIcon /></Link>
+          <small>Account is optional for browsing. Login saves progress and preferences across devices.</small>
         </div>
       </section>
     </main>
