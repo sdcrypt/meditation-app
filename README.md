@@ -733,16 +733,18 @@ The repository includes `render.yaml` for Render Blueprint deployment.
 It creates:
 
 - `still-api` web service
+- `still-reminder-cron` cron job for email practice reminders
 - `still-postgres` managed Postgres database
 
 The checked-in Blueprint uses Render's free instance types so the app can be
-shared with testers before paying for hosting. Render free services are not
-appropriate for final production:
+shared with testers before paying for backend/database hosting. Render free
+services are not appropriate for final production:
 
 - the backend can sleep after idle time
 - the first request after sleep can be slow
 - free Postgres expires after 30 days
 - free Postgres does not include backups
+- Render cron jobs are not free and have a minimum monthly charge
 
 Before a real launch, upgrade the backend and database plans in `render.yaml`
 or in the Render dashboard.
@@ -756,6 +758,16 @@ uvicorn app.main:app --host 0.0.0.0 --port "$PORT"
 
 Render provides `$PORT`; local Docker falls back to `8000`.
 
+The reminder cron job runs every 30 minutes with:
+
+```bash
+python -m app.cli.send_due_reminders
+```
+
+It sends due practice reminder emails for verified users who enabled reminders
+in Account settings. Render cron schedules use UTC, but the app checks each
+user's saved timezone before sending.
+
 After creating the Render Blueprint, fill these Render environment variables
 manually because they are marked as secrets:
 
@@ -763,6 +775,10 @@ manually because they are marked as secrets:
 - `AWS_SECRET_KEY`
 - `AWS_S3_BUCKET`
 - `BREVO_API_KEY`
+
+The cron job also needs `BREVO_API_KEY`. If the Blueprint does not copy the
+existing secret value automatically, add the same Brevo key to
+`still-reminder-cron`.
 
 Render generates:
 

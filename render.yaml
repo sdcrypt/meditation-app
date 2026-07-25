@@ -58,6 +58,35 @@ services:
       - key: LOG_LEVEL
         value: INFO
 
+  - type: cron
+    name: still-reminder-cron
+    runtime: docker
+    plan: starter
+    region: singapore
+    schedule: "*/30 * * * *"
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    dockerCommand: python -m app.cli.send_due_reminders
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: still-postgres
+          property: connectionString
+      - key: APP_ENV
+        value: production
+      - key: FRONTEND_URL
+        value: https://stillmorrow.in
+      - key: EMAIL_PROVIDER
+        value: brevo
+      - key: EMAIL_FROM
+        value: Still <no-reply@stillmorrow.in>
+      - key: BREVO_API_KEY
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: LOG_LEVEL
+        value: INFO
+
 databases:
   - name: still-postgres
     databaseName: meditation
