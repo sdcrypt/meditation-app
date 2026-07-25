@@ -29,13 +29,13 @@ const EMPTY_PROGRAM = {
   meditation_search: "",
 };
 
-const MEDITATION_CSV_TEMPLATE = `title,category,duration_sec,level,description,teacher_name,tags,benefits,is_featured,is_published,audio_filename,artwork_filename
-Morning Calm,Calm,600,beginner,A gentle morning practice,Still Guide,"calm,morning,breath","Builds focus|Reduces stress",true,true,morning-calm.mp3,morning-calm.png
+const MEDITATION_CSV_TEMPLATE = `title,category,duration_sec,level,description,teacher_name,tags,benefits,is_featured,is_published,audio_url,artwork_url,audio_filename,artwork_filename
+Morning Calm,Calm,600,beginner,A gentle morning practice,Still Guide,"calm,morning,breath","Builds focus|Reduces stress",true,true,,,morning-calm.mp3,morning-calm.png
 `;
 
-const PROGRAM_CSV_TEMPLATE = `title,description,goal,level,is_published,artwork_filename,meditation_ids,meditation_titles
-7 Days of Calm,A gentle first-week path for building a steady daily pause,stress,beginner,true,7-days-calm.png,3|4|5,
-Sleep Reset,A soothing evening sequence for deeper rest,sleep,all levels,true,sleep-reset.png,,Morning Calm|Sleep Reset Intro
+const PROGRAM_CSV_TEMPLATE = `title,description,goal,level,is_published,artwork_url,artwork_filename,meditation_ids,meditation_titles
+7 Days of Calm,A gentle first-week path for building a steady daily pause,stress,beginner,true,,7-days-calm.png,3|4|5,
+Sleep Reset,A soothing evening sequence for deeper rest,sleep,all levels,true,,sleep-reset.png,,Morning Calm|Sleep Reset Intro
 `;
 
 const withDraftFields = (meditation) => ({
@@ -209,6 +209,17 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState("");
   const [notice, setNotice] = useState("");
+  const [expandedSections, setExpandedSections] = useState({
+    meditations: false,
+    programs: false,
+  });
+
+  const toggleSection = (section) => {
+    setExpandedSections((current) => ({
+      ...current,
+      [section]: !current[section],
+    }));
+  };
 
   const request = useCallback(async (path, options = {}) => {
     const response = await csrfFetch(`${API_BASE_URL}${path}`, {
@@ -543,6 +554,32 @@ export default function Admin() {
     }
   };
 
+  const downloadAdminExport = async (path, filename) => {
+    setPageError("");
+    setNotice("");
+    try {
+      const response = await csrfFetch(`${API_BASE_URL}${path}`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(getErrorMessage(payload, `Export failed: ${response.status}`));
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setNotice(`${filename} downloaded.`);
+    } catch (error) {
+      setPageError(error.message);
+    }
+  };
+
   const updateProgram = async (program) => {
     setSavingId(`program-${program.id}`);
     setPageError("");
@@ -608,6 +645,60 @@ export default function Admin() {
           </div>
         )}
 
+        <section className="admin-overview">
+          <article>
+            <span>Meditations</span>
+            <strong>{loading ? "…" : meditations.length}</strong>
+            <button type="button" onClick={() => toggleSection("meditations")}>
+              {expandedSections.meditations ? "Hide library" : "Manage library"}
+            </button>
+          </article>
+          <article>
+            <span>Programs</span>
+            <strong>{programs.length}</strong>
+            <button type="button" onClick={() => toggleSection("programs")}>
+              {expandedSections.programs ? "Hide programs" : "Manage programs"}
+            </button>
+          </article>
+          <article>
+            <span>Daily workflow</span>
+            <strong>Import → Create → Manage</strong>
+            <p>Use the top sections for new content. Open management only when editing existing items.</p>
+          </article>
+        </section>
+
+        <section className="admin-create admin-backup-export">
+          <div className="admin-section-title">
+            <span>BK</span>
+            <div>
+              <h2>Backup exports</h2>
+              <p>Download production content as CSV before major edits, imports, or deployments.</p>
+            </div>
+          </div>
+          <div className="admin-export-grid">
+            <article>
+              <strong>Meditations CSV</strong>
+              <p>Exports audio URLs, artwork URLs, teacher, description, tags, benefits, publish status, and featured status.</p>
+              <button
+                type="button"
+                onClick={() => downloadAdminExport("/admin/meditations/export.csv", "meditations-backup.csv")}
+              >
+                Download meditations
+              </button>
+            </article>
+            <article>
+              <strong>Programs CSV</strong>
+              <p>Exports program details, artwork URL, publish status, and ordered meditation IDs/titles.</p>
+              <button
+                type="button"
+                onClick={() => downloadAdminExport("/admin/programs/export.csv", "programs-backup.csv")}
+              >
+                Download programs
+              </button>
+            </article>
+          </div>
+        </section>
+
         <section className="admin-create admin-bulk-import">
           <div className="admin-section-title">
             <span>00</span>
@@ -647,8 +738,8 @@ export default function Admin() {
               </label>
               <div className="admin-bulk-help">
                 <strong>CSV columns</strong>
-                <p>title, category, duration_sec, level, description, teacher_name, tags, benefits, is_featured, is_published, audio_filename, artwork_filename</p>
-                <small>Tags use commas. Benefits use | between items.</small>
+                <p>title, category, duration_sec, level, description, teacher_name, tags, benefits, is_featured, is_published, audio_url, artwork_url, audio_filename, artwork_filename</p>
+                <small>For restore, use audio_url/artwork_url. For new uploads, use filenames with ZIP. URLs win if both are present.</small>
               </div>
             </div>
             <button className="admin-primary-button" type="submit" disabled={bulkImporting}>
@@ -729,8 +820,8 @@ export default function Admin() {
               </label>
               <div className="admin-bulk-help">
                 <strong>Program CSV columns</strong>
-                <p>title, description, goal, level, is_published, artwork_filename, meditation_ids, meditation_titles</p>
-                <small>Use meditation_ids like 3|4|5 or exact meditation_titles like Morning Calm|Sleep Intro.</small>
+                <p>title, description, goal, level, is_published, artwork_url, artwork_filename, meditation_ids, meditation_titles</p>
+                <small>For restore, use artwork_url. For new uploads, use artwork_filename with ZIP. URLs win if both are present.</small>
               </div>
             </div>
             <button className="admin-primary-button" type="submit" disabled={programBulkImporting}>
@@ -866,17 +957,34 @@ export default function Admin() {
         <section className="admin-library">
           <div className="admin-section-title">
             <span>02</span>
-            <div><h2>Existing meditations</h2><p>{meditations.length} items in your library</p></div>
+            <div><h2>Existing meditations</h2><p>{meditations.length} items in your library. Collapsed by default to keep this page focused.</p></div>
+            <button
+              className="admin-collapse-button"
+              type="button"
+              onClick={() => toggleSection("meditations")}
+            >
+              {expandedSections.meditations ? "Collapse" : "Open library"}
+            </button>
           </div>
 
-          {loading && <div className="admin-empty">Loading your library…</div>}
-          {!loading && meditations.length === 0 && (
-            <div className="admin-empty">No meditations yet. Create the first one above.</div>
-          )}
+          {!expandedSections.meditations ? (
+            <div className="admin-collapsed-summary">
+              <div>
+                <strong>{loading ? "Loading…" : `${meditations.length} meditations ready`}</strong>
+                <p>Open this section only when you need to edit artwork, audio, descriptions, tags, publishing, or delete content.</p>
+              </div>
+              <button type="button" onClick={() => toggleSection("meditations")}>Open meditation library</button>
+            </div>
+          ) : (
+            <>
+              {loading && <div className="admin-empty">Loading your library…</div>}
+              {!loading && meditations.length === 0 && (
+                <div className="admin-empty">No meditations yet. Create the first one above.</div>
+              )}
 
-          <div className="admin-card-list">
-            {meditations.map((meditation) => (
-              <article className="admin-card" key={meditation.id}>
+              <div className="admin-card-list">
+                {meditations.map((meditation) => (
+                  <article className="admin-card" key={meditation.id}>
                 <aside className="admin-card__media">
                   {meditation.artwork_url ? (
                     <img src={meditation.artwork_url} alt="" />
@@ -986,18 +1094,37 @@ export default function Admin() {
                     </div>
                   </div>
                 </div>
-              </article>
-            ))}
-          </div>
+                  </article>
+                ))}
+              </div>
+            </>
+          )}
         </section>
 
         <section className="admin-library admin-programs">
           <div className="admin-section-title">
             <span>03</span>
-            <div><h2>Programs</h2><p>Create guided paths from ordered meditation sequences.</p></div>
+            <div><h2>Programs</h2><p>Create and manage guided paths from ordered meditation sequences.</p></div>
+            <button
+              className="admin-collapse-button"
+              type="button"
+              onClick={() => toggleSection("programs")}
+            >
+              {expandedSections.programs ? "Collapse" : "Open programs"}
+            </button>
           </div>
 
-          <form className="admin-program-create" onSubmit={handleCreateProgram}>
+          {!expandedSections.programs ? (
+            <div className="admin-collapsed-summary">
+              <div>
+                <strong>{programs.length} programs configured</strong>
+                <p>Open this section when you need to create a program, order meditations, replace artwork, or update publishing.</p>
+              </div>
+              <button type="button" onClick={() => toggleSection("programs")}>Open program manager</button>
+            </div>
+          ) : (
+            <>
+              <form className="admin-program-create" onSubmit={handleCreateProgram}>
             <div className="admin-form-grid">
               <label className="admin-field admin-field--wide">
                 <span>Program title</span>
@@ -1061,11 +1188,11 @@ export default function Admin() {
               </div>
               <button className="admin-primary-button" type="submit">Create program</button>
             </div>
-          </form>
+              </form>
 
-          <div className="admin-program-list">
-            {programs.map((program) => (
-              <article className="admin-program-card" key={program.id}>
+              <div className="admin-program-list">
+                {programs.map((program) => (
+                  <article className="admin-program-card" key={program.id}>
                 <div className="admin-form-grid admin-form-grid--edit">
                   <label className="admin-field admin-field--wide">
                     <span>Title</span>
@@ -1145,9 +1272,11 @@ export default function Admin() {
                     </button>
                   </div>
                 </div>
-              </article>
-            ))}
-          </div>
+                  </article>
+                ))}
+              </div>
+            </>
+          )}
         </section>
       </div>
     </main>

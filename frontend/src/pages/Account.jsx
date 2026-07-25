@@ -7,7 +7,7 @@ import { API_BASE_URL, DEVICE_ID } from "../config";
 import { useAuth } from "../context/AuthContext";
 import { useFavorites } from "../context/FavoritesContext";
 import { usePreferences } from "../context/PreferencesContext";
-import { isUnauthorized, sessionExpiredMessage } from "../utils/authFetch";
+import { csrfFetch, isUnauthorized, sessionExpiredMessage } from "../utils/authFetch";
 import {
   DURATION_OPTIONS,
   EXPERIENCE_OPTIONS,
@@ -28,6 +28,12 @@ const formatListeningTime = (seconds = 0) => {
 const formatAccountDate = (value) =>
   value ? new Date(value).toLocaleDateString() : "";
 
+const REMINDER_FREQUENCIES = [
+  { id: "daily", label: "Daily" },
+  { id: "weekdays", label: "Weekdays" },
+  { id: "weekends", label: "Weekends" },
+];
+
 export default function Account() {
   const { user, logout, markSessionExpired } = useAuth();
   const { favorites, isLoading: favoritesLoading } = useFavorites();
@@ -35,6 +41,10 @@ export default function Account() {
   const [summary, setSummary] = useState(null);
   const [history, setHistory] = useState([]);
   const [enrolledPrograms, setEnrolledPrograms] = useState([]);
+  const [reminder, setReminder] = useState(null);
+  const [reminderSaving, setReminderSaving] = useState(false);
+  const [reminderMessage, setReminderMessage] = useState("");
+  const [reminderError, setReminderError] = useState("");
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState("");
   const location = useLocation();
@@ -48,7 +58,7 @@ export default function Account() {
   const fetchDashboard = useCallback(async () => {
     setDashboardError("");
     try {
-      const [summaryResponse, historyResponse, programsResponse] = await Promise.all([
+      const [summaryResponse, historyResponse, programsResponse, reminderResponse] = await Promise.all([
         fetch(
           `${API_BASE_URL}/sessions/progress/${DEVICE_ID}?timezone=${encodeURIComponent(timezone)}`,
           { credentials: "include" }
@@ -61,10 +71,14 @@ export default function Account() {
           `${API_BASE_URL}/programs/me/enrollments`,
           { credentials: "include" }
         ),
+        fetch(
+          `${API_BASE_URL}/reminders/me`,
+          { credentials: "include" }
+        ),
       ]);
-      if (!summaryResponse.ok || !historyResponse.ok || !programsResponse.ok) {
+      if (!summaryResponse.ok || !historyResponse.ok || !programsResponse.ok || !reminderResponse.ok) {
         if (
-          [summaryResponse, historyResponse, programsResponse].some(isUnauthorized)
+          [summaryResponse, historyResponse, programsResponse, reminderResponse].some(isUnauthorized)
         ) {
           markSessionExpired();
           navigate("/login", {
@@ -75,14 +89,21 @@ export default function Account() {
         }
         throw new Error("Unable to load account dashboard.");
       }
-      const [summaryData, historyData, programsData] = await Promise.all([
+      const [summaryData, historyData, programsData, reminderData] = await Promise.all([
         summaryResponse.json(),
         historyResponse.json(),
         programsResponse.json(),
+        reminderResponse.json(),
       ]);
       setSummary(summaryData);
       setHistory(historyData.items ?? []);
       setEnrolledPrograms(programsData ?? []);
+      setReminder({
+        is_enabled: Boolean(reminderData.is_enabled),
+        reminder_time: (reminderData.reminder_time || "08:00").slice(0, 5),
+        frequency: reminderData.frequency || "daily",
+        timezone: reminderData.timezone || timezone,
+      });
     } catch (error) {
       setDashboardError(error.message);
     } finally {
@@ -97,6 +118,62 @@ export default function Account() {
   const handleLogout = async () => {
     await logout();
     navigate("/", { replace: true });
+  };
+
+  const setReminderField = (field, value) => {
+    setReminder((current) => ({
+      ...(current || {
+        is_enabled: false,
+        reminder_time: "08:00",
+        frequency: "daily",
+        timezone,
+      }),
+      [field]: value,
+    }));
+  };
+
+  const saveReminder = async (event) => {
+    event.preventDefault();
+    if (!reminder) return;
+    setReminderSaving(true);
+    setReminderMessage("");
+    setReminderError("");
+    try {
+      const response = await csrfFetch(`${API_BASE_URL}/reminders/me`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          is_enabled: reminder.is_enabled,
+          reminder_time: reminder.reminder_time,
+          frequency: reminder.frequency,
+          timezone: reminder.timezone || timezone,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (isUnauthorized(response)) {
+          markSessionExpired();
+          navigate("/login", {
+            replace: true,
+            state: { from: location, error: sessionExpiredMessage },
+          });
+          return;
+        }
+        throw new Error(payload.detail || "Unable to save reminders.");
+      }
+      setReminder({
+        is_enabled: Boolean(payload.is_enabled),
+        reminder_time: (payload.reminder_time || "08:00").slice(0, 5),
+        frequency: payload.frequency || "daily",
+        timezone: payload.timezone || timezone,
+      });
+      setReminderMessage(payload.is_enabled ? "Reminder saved." : "Reminder turned off.");
+    } catch (error) {
+      setReminderError(error.message);
+    } finally {
+      setReminderSaving(false);
+    }
   };
 
   const goalLabels = useMemo(
@@ -310,6 +387,68 @@ export default function Account() {
                 <p>Answer four quick questions to tune Explore and For You.</p>
                 <button onClick={openOnboarding}>Choose preferences</button>
               </div>
+            )}
+          </article>
+
+          <article className="account-panel account-reminders">
+            <div className="account-section-heading">
+              <div>
+                <p className="eyebrow">Habit support</p>
+                <h2>Practice reminders</h2>
+              </div>
+            </div>
+            {reminder ? (
+              <form className="account-reminder-form" onSubmit={saveReminder}>
+                <label className="account-reminder-toggle">
+                  <input
+                    type="checkbox"
+                    checked={reminder.is_enabled}
+                    onChange={(event) => setReminderField("is_enabled", event.target.checked)}
+                  />
+                  <span>Email me a practice reminder</span>
+                </label>
+                <div className="account-reminder-grid">
+                  <label>
+                    <span>Preferred time</span>
+                    <input
+                      type="time"
+                      value={reminder.reminder_time}
+                      onChange={(event) => setReminderField("reminder_time", event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>Frequency</span>
+                    <select
+                      value={reminder.frequency}
+                      onChange={(event) => setReminderField("frequency", event.target.value)}
+                    >
+                      {REMINDER_FREQUENCIES.map((item) => (
+                        <option value={item.id} key={item.id}>{item.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Timezone</span>
+                    <input
+                      value={reminder.timezone}
+                      onChange={(event) => setReminderField("timezone", event.target.value)}
+                    />
+                  </label>
+                </div>
+                <p className="account-reminder-note">
+                  Reminders are sent by email. Verified email is required.
+                </p>
+                {(reminderMessage || reminderError) && (
+                  <p className={reminderError ? "account-reminder-error" : "account-reminder-success"}>
+                    {reminderError || reminderMessage}
+                  </p>
+                )}
+                <button type="submit" disabled={reminderSaving}>
+                  {reminderSaving ? "Saving…" : "Save reminders"}
+                </button>
+              </form>
+            ) : (
+              <div className="account-empty-mini">Loading reminder settings…</div>
             )}
           </article>
 

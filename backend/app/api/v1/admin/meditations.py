@@ -1,10 +1,11 @@
 import csv
-from io import BytesIO, TextIOWrapper
+from io import BytesIO, StringIO, TextIOWrapper
 import mimetypes
 from pathlib import PurePath
 import zipfile
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
@@ -33,6 +34,8 @@ CSV_COLUMNS = {
     "benefits",
     "is_featured",
     "is_published",
+    "audio_url",
+    "artwork_url",
     "audio_filename",
     "artwork_filename",
 }
@@ -58,6 +61,61 @@ def list_all_meditations(db: Session = Depends(get_db)):
         Meditation.created_at.desc(),
         Meditation.id.desc(),
     ).all()
+
+
+def join_list(values: list[str] | None, separator: str) -> str:
+    """Join list values into a single CSV cell."""
+    if not values:
+        return ""
+    return separator.join(str(item).strip() for item in values if str(item).strip())
+
+
+@router.get("/export.csv", dependencies=[Depends(require_admin)])
+def export_meditations_csv(db: Session = Depends(get_db)):
+    """Download all meditations as a CSV backup for production content."""
+    output = StringIO()
+    fieldnames = [
+        "id",
+        "title",
+        "category",
+        "duration_sec",
+        "level",
+        "description",
+        "teacher_name",
+        "tags",
+        "benefits",
+        "is_featured",
+        "is_published",
+        "audio_url",
+        "artwork_url",
+        "created_at",
+    ]
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
+    writer.writeheader()
+    for meditation in db.query(Meditation).order_by(Meditation.id.asc()).all():
+        writer.writerow(
+            {
+                "id": meditation.id,
+                "title": meditation.title,
+                "category": meditation.category,
+                "duration_sec": meditation.duration_sec,
+                "level": meditation.level,
+                "description": meditation.description,
+                "teacher_name": meditation.teacher_name,
+                "tags": join_list(meditation.tags, ","),
+                "benefits": join_list(meditation.benefits, "|"),
+                "is_featured": meditation.is_featured,
+                "is_published": meditation.is_published,
+                "audio_url": meditation.audio_url or "",
+                "artwork_url": meditation.artwork_url or "",
+                "created_at": meditation.created_at.isoformat() if meditation.created_at else "",
+            }
+        )
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="meditations-backup.csv"'},
+    )
 
 
 @router.post("/", response_model=MeditationRead, dependencies=[Depends(require_admin)])
@@ -155,10 +213,10 @@ def build_meditation_payload(row: dict[str, str | None]) -> MeditationCreate:
         category=(row.get("category") or "").strip(),
         duration_sec=int((row.get("duration_sec") or "").strip()),
         level=(row.get("level") or "").strip(),
-        audio_url=None,
+        audio_url=(row.get("audio_url") or "").strip() or None,
         description=(row.get("description") or "").strip(),
         teacher_name=(row.get("teacher_name") or "").strip(),
-        artwork_url=None,
+        artwork_url=(row.get("artwork_url") or "").strip() or None,
         tags=split_csv_list(row.get("tags"), ","),
         benefits=split_csv_list(row.get("benefits"), "|"),
         is_featured=parse_bool(row.get("is_featured"), False),
@@ -224,7 +282,9 @@ def bulk_import_meditations(
 
         audio_filename = row.get("audio_filename")
         audio_file = find_media_file(media_files, "audio", audio_filename)
-        if audio_filename and audio_file is None:
+        if meditation.audio_url:
+            pass
+        elif audio_filename and audio_file is None:
             warnings.append(f"Row {row_number}: audio file not found: {audio_filename}")
         elif audio_file is not None:
             audio_key, audio_bytes = audio_file
@@ -241,7 +301,9 @@ def bulk_import_meditations(
 
         artwork_filename = row.get("artwork_filename")
         artwork_file = find_media_file(media_files, "artwork", artwork_filename)
-        if artwork_filename and artwork_file is None:
+        if meditation.artwork_url:
+            pass
+        elif artwork_filename and artwork_file is None:
             warnings.append(f"Row {row_number}: artwork file not found: {artwork_filename}")
         elif artwork_file is not None:
             artwork_key, artwork_bytes = artwork_file
