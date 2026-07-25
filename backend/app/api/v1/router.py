@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from app.api.v1 import sessions
 
-from app.api.v1 import favorites, health, meditations, preferences, programs
+from app.api.v1 import favorites, health, meditations, preferences, programs, reminders
 from app.api.v1.admin import meditations as admin_meditations
 from app.api.v1.admin import programs as admin_programs
 from app.api.v1 import auth
@@ -60,4 +60,10 @@ api_router.include_router(
     favorites.router,
     prefix="/favorites",
     tags=["Favorites"],
+)
+
+api_router.include_router(
+    reminders.router,
+    prefix="/reminders",
+    tags=["Reminders"],
 )
