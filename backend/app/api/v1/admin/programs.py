@@ -207,10 +207,9 @@ def ordered_meditation_ids_from_row(
                 continue
             meditation = db.query(Meditation).filter(
                 Meditation.id == meditation_id,
-                Meditation.is_published.is_(True),
             ).first()
             if meditation is None:
-                errors.append(f"published meditation ID not found: {meditation_id}")
+                errors.append(f"meditation ID not found: {meditation_id}")
                 continue
             if meditation_id not in seen_ids:
                 ordered_ids.append(meditation_id)
@@ -221,10 +220,9 @@ def ordered_meditation_ids_from_row(
     for title in raw_titles:
         meditation = db.query(Meditation).filter(
             Meditation.title == title,
-            Meditation.is_published.is_(True),
         ).first()
         if meditation is None:
-            errors.append(f"published meditation title not found: {title}")
+            errors.append(f"meditation title not found: {title}")
             continue
         if meditation.id not in seen_ids:
             ordered_ids.append(meditation.id)
@@ -287,15 +285,18 @@ def bulk_import_programs(
             )
             continue
 
+        program = db.query(Program).filter(Program.title == title).first()
+        is_new = program is None
         try:
-            is_published = parse_bool(row.get("is_published"), True)
+            is_published = parse_bool(
+                row.get("is_published"),
+                False if is_new else bool(program.is_published),
+            )
         except ValueError as error:
             skipped += 1
             errors.append(f"Row {row_number}: {error}")
             continue
 
-        program = db.query(Program).filter(Program.title == title).first()
-        is_new = program is None
         if program is None:
             program = Program(title=title)
             db.add(program)

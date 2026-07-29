@@ -773,6 +773,11 @@ button { cursor: pointer; }
 .admin-collapsed-summary { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:24px; border:1px dashed #cbd2ca; border-radius:16px; background:#f3f4ef; }
 .admin-collapsed-summary strong { display:block; margin-bottom:6px; color:#244e46; font-family:"Playfair Display",serif; font-size:24px; font-weight:500; }
 .admin-collapsed-summary p { max-width:650px; margin:0; color:#7b8982; font-size:11px; line-height:1.6; }
+.admin-review-toolbar { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 18px; padding:8px; border:1px solid #dedfd8; border-radius:999px; background:#f3f4ef; width:max-content; max-width:100%; }
+.admin-review-toolbar button { min-height:34px; display:flex; align-items:center; gap:8px; padding:0 13px; border:0; border-radius:999px; color:#71817a; background:transparent; font-size:9px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; }
+.admin-review-toolbar button.is-active { color:white; background:#23584e; }
+.admin-review-toolbar span { display:grid; place-items:center; min-width:21px; height:21px; padding:0 7px; border-radius:999px; color:#6f8079; background:#e4e7df; font-size:8px; }
+.admin-review-toolbar button.is-active span { color:#23584e; background:white; }
 .admin-form-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:17px; }
 .admin-form-grid--edit { grid-template-columns:repeat(4,1fr); }
 .admin-field { display:flex; flex-direction:column; gap:7px; }
@@ -827,12 +832,18 @@ button { cursor: pointer; }
 .admin-statuses .is-live { color:#2d6d5c; background:#d9ece1; }
 .admin-statuses .is-draft { color:#7a7063; background:#eae6dd; }
 .admin-statuses .is-featured { color:#9a5e48; background:#f2dbcf; }
+.admin-readiness-warning { display:flex; align-items:flex-start; gap:10px; margin:-6px 0 18px; padding:12px 13px; border:1px solid #ead0bd; border-radius:12px; color:#7a594c; background:#fbefe8; font-size:10px; line-height:1.45; }
+.admin-readiness-warning strong { flex:0 0 auto; color:#9b5d48; font-size:9px; letter-spacing:.6px; text-transform:uppercase; }
+.admin-readiness-warning span { color:#76665e; }
 .admin-card__bottom { display:grid; grid-template-columns:minmax(260px,1fr) auto auto; align-items:center; gap:18px; margin-top:20px; padding-top:19px; border-top:1px solid #e7e8e3; }
 .admin-audio { display:flex; align-items:center; gap:10px; min-width:0; }
 .admin-audio audio { width:min(100%,330px); height:36px; }
 .admin-audio > span { color:#9a8b82; font-size:10px; }
 .admin-file-button--dark { position:relative; inset:auto; flex:0 0 auto; min-height:32px; padding:0 13px; border:0; background:#dfe8e2; color:#365f55; backdrop-filter:none; }
 .admin-publish-controls--inline { flex-direction:row; gap:14px; padding:0; background:transparent; }
+.admin-status-button { min-height:34px; padding:0 13px; border:0; border-radius:999px; color:white; background:#23584e; font-size:9px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; }
+.admin-status-button--draft { color:#915b48; background:#f2ded3; }
+.admin-status-button:disabled { cursor:not-allowed; opacity:.55; }
 .admin-card__actions { display:flex; align-items:center; gap:8px; }
 .admin-delete-button { min-height:38px; padding:0 12px; border:0; color:#a05b4d; background:transparent; font-size:10px; }
 
@@ -903,6 +914,8 @@ button { cursor: pointer; }
   .admin-section-title { flex-wrap:wrap; }
   .admin-template-button,.admin-collapse-button { width:100%; margin-left:44px; }
   .admin-collapsed-summary { align-items:flex-start; flex-direction:column; }
+  .admin-review-toolbar { width:100%; border-radius:18px; }
+  .admin-review-toolbar button { flex:1; justify-content:center; }
   .admin-form-grid,.admin-form-grid--edit { grid-template-columns:1fr; }
   .admin-program-picker { padding:14px; }
   .admin-program-selected-item { grid-template-columns:32px 1fr; }
