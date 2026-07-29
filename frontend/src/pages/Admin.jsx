@@ -15,7 +15,7 @@ const EMPTY_MEDITATION = {
   tags_text: "",
   benefits_text: "",
   is_featured: false,
-  is_published: true,
+  is_published: false,
 };
 
 const EMPTY_PROGRAM = {
@@ -24,18 +24,18 @@ const EMPTY_PROGRAM = {
   artwork_url: "",
   level: "beginner",
   goal: "",
-  is_published: true,
+  is_published: false,
   meditation_ids: [],
   meditation_search: "",
 };
 
 const MEDITATION_CSV_TEMPLATE = `title,category,duration_sec,level,description,teacher_name,tags,benefits,is_featured,is_published,audio_url,artwork_url,audio_filename,artwork_filename
-Morning Calm,Calm,600,beginner,A gentle morning practice,Still Guide,"calm,morning,breath","Builds focus|Reduces stress",true,true,,,morning-calm.mp3,morning-calm.png
+Morning Calm,Calm,600,beginner,A gentle morning practice,Still Guide,"calm,morning,breath","Builds focus|Reduces stress",false,false,,,morning-calm.mp3,morning-calm.png
 `;
 
 const PROGRAM_CSV_TEMPLATE = `title,description,goal,level,is_published,artwork_url,artwork_filename,meditation_ids,meditation_titles
-7 Days of Calm,A gentle first-week path for building a steady daily pause,stress,beginner,true,,7-days-calm.png,3|4|5,
-Sleep Reset,A soothing evening sequence for deeper rest,sleep,all levels,true,,sleep-reset.png,,Morning Calm|Sleep Reset Intro
+7 Days of Calm,A gentle first-week path for building a steady daily pause,stress,beginner,false,,7-days-calm.png,3|4|5,
+Sleep Reset,A soothing evening sequence for deeper rest,sleep,all levels,false,,sleep-reset.png,,Morning Calm|Sleep Reset Intro
 `;
 
 const withDraftFields = (meditation) => ({
@@ -49,6 +49,38 @@ const parseTags = (value) =>
 
 const parseBenefits = (value) =>
   parseDelimitedList(value, "\n");
+
+const readinessMessagesForMeditation = (meditation) => {
+  const messages = [];
+  if (!meditation.title?.trim()) messages.push("Add a title.");
+  if (!meditation.audio_url) messages.push("Upload audio.");
+  if (!meditation.artwork_url) messages.push("Upload artwork.");
+  if (!meditation.description?.trim()) messages.push("Add a description.");
+  if (!meditation.category?.trim()) messages.push("Add a category.");
+  if (!Number(meditation.duration_sec)) messages.push("Add duration.");
+  if (!meditation.teacher_name?.trim()) messages.push("Add teacher.");
+  return messages;
+};
+
+const readinessMessagesForProgram = (program, meditations) => {
+  const messages = [];
+  if (!program.title?.trim()) messages.push("Add a title.");
+  if (!program.description?.trim()) messages.push("Add a description.");
+  if (!program.artwork_url?.trim()) messages.push("Add artwork.");
+  if (!program.goal?.trim()) messages.push("Add a goal.");
+  if (!program.level?.trim()) messages.push("Add a level.");
+  if ((program.meditation_ids ?? []).length < 2) {
+    messages.push("Add at least 2 meditations.");
+  }
+  const meditationById = new Map(meditations.map((item) => [item.id, item]));
+  const draftMeditations = (program.meditation_ids ?? [])
+    .map((id) => meditationById.get(id))
+    .filter((item) => item && !item.is_published);
+  if (draftMeditations.length > 0) {
+    messages.push(`Publish selected meditations first: ${draftMeditations.map((item) => item.title).join(", ")}.`);
+  }
+  return messages;
+};
 
 const withProgramDraftFields = (program) => ({
   ...program,
@@ -209,6 +241,8 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState("");
   const [notice, setNotice] = useState("");
+  const [meditationStatusFilter, setMeditationStatusFilter] = useState("all");
+  const [programStatusFilter, setProgramStatusFilter] = useState("all");
   const [expandedSections, setExpandedSections] = useState({
     meditations: false,
     programs: false,
@@ -289,20 +323,18 @@ export default function Admin() {
   const validateProgramDraft = (program) => {
     if (!program.title.trim()) return "Program title is required.";
     if (program.meditation_ids.length === 0) {
-      return "Choose at least one published meditation for this program.";
+      return "Choose at least one meditation for this program.";
     }
     const meditationById = new Map(meditations.map((item) => [item.id, item]));
     const missingIds = program.meditation_ids.filter((id) => !meditationById.has(id));
     if (missingIds.length > 0) {
       return `These meditation IDs are no longer available: ${missingIds.join(", ")}.`;
     }
-    const unpublishedItems = program.meditation_ids
-      .map((id) => meditationById.get(id))
-      .filter((item) => item && !item.is_published);
-    if (unpublishedItems.length > 0) {
-      return `Publish or remove these meditations first: ${unpublishedItems
-        .map((item) => item.title)
-        .join(", ")}.`;
+    if (program.is_published) {
+      const readinessMessages = readinessMessagesForProgram(program, meditations);
+      if (readinessMessages.length > 0) {
+        return `Program is not ready to publish: ${readinessMessages.join(" ")}`;
+      }
     }
     return "";
   };
@@ -377,7 +409,7 @@ export default function Admin() {
   const programPayload = (program) => ({
     title: program.title.trim(),
     description: program.description.trim(),
-    artwork_url: program.artwork_url.trim() || null,
+    artwork_url: program.artwork_url?.trim() || null,
     level: program.level.trim(),
     goal: program.goal.trim(),
     is_published: program.is_published,
@@ -391,11 +423,23 @@ export default function Admin() {
     setPageError("");
     setNotice("");
     try {
+      const wantsPublished = newMeditation.is_published;
+      if (wantsPublished) {
+        const readinessMessages = readinessMessagesForMeditation({
+          ...newMeditation,
+          audio_url: newAudioFile ? "pending-upload" : "",
+          artwork_url: newArtworkFile ? "pending-upload" : "",
+        });
+        if (readinessMessages.length > 0) {
+          throw new Error(`Meditation is not ready to publish: ${readinessMessages.join(" ")}`);
+        }
+      }
       let created = await request("/admin/meditations/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...meditationPayload(newMeditation),
+          is_published: false,
           audio_url: null,
           artwork_url: null,
         }),
@@ -405,6 +449,17 @@ export default function Admin() {
       }
       if (newAudioFile) {
         created = await uploadFile(created.id, newAudioFile, "audio");
+      }
+      if (wantsPublished) {
+        created = await request(`/admin/meditations/${created.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...meditationPayload({ ...newMeditation, is_published: true }),
+            audio_url: created.audio_url,
+            artwork_url: created.artwork_url,
+          }),
+        });
       }
       setMeditations((current) => [withDraftFields(created), ...current]);
       setNewMeditation(EMPTY_MEDITATION);
@@ -424,15 +479,27 @@ export default function Admin() {
     setPageError("");
     setNotice("");
     try {
-      const validationError = validateProgramDraft(newProgram);
+      const wantsPublished = newProgram.is_published;
+      const validationError = validateProgramDraft({
+        ...newProgram,
+        is_published: wantsPublished,
+        artwork_url: newProgram.artwork_url || (newProgramArtworkFile ? "pending-upload" : ""),
+      });
       if (validationError) throw new Error(validationError);
       let created = await request("/admin/programs/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(programPayload(newProgram)),
+        body: JSON.stringify(programPayload({ ...newProgram, is_published: false })),
       });
       if (newProgramArtworkFile) {
         created = await uploadProgramArtwork(created.id, newProgramArtworkFile);
+      }
+      if (wantsPublished) {
+        created = await request(`/admin/programs/${created.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(programPayload({ ...newProgram, artwork_url: created.artwork_url || "", is_published: true })),
+        });
       }
       setPrograms((current) => [withProgramDraftFields(created), ...current]);
       setNewProgram(EMPTY_PROGRAM);
@@ -448,6 +515,12 @@ export default function Admin() {
     setPageError("");
     setNotice("");
     try {
+      if (meditation.is_published) {
+        const readinessMessages = readinessMessagesForMeditation(meditation);
+        if (readinessMessages.length > 0) {
+          throw new Error(`Meditation is not ready to publish: ${readinessMessages.join(" ")}`);
+        }
+      }
       const updated = await request(`/admin/meditations/${meditation.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -464,6 +537,10 @@ export default function Admin() {
     } finally {
       setSavingId(null);
     }
+  };
+
+  const updateMeditationPublishState = (meditation, isPublished) => {
+    updateMeditation({ ...meditation, is_published: isPublished });
   };
 
   const deleteMeditation = async (meditation) => {
@@ -603,6 +680,10 @@ export default function Admin() {
     }
   };
 
+  const updateProgramPublishState = (program, isPublished) => {
+    updateProgram({ ...program, is_published: isPublished });
+  };
+
   const deleteProgram = async (program) => {
     if (!window.confirm(`Delete “${program.title}”? This cannot be undone.`)) return;
     setPageError("");
@@ -614,6 +695,27 @@ export default function Admin() {
       setPageError(error.message);
     }
   };
+
+  const meditationCounts = {
+    all: meditations.length,
+    published: meditations.filter((item) => item.is_published).length,
+    draft: meditations.filter((item) => !item.is_published).length,
+  };
+  const programCounts = {
+    all: programs.length,
+    published: programs.filter((item) => item.is_published).length,
+    draft: programs.filter((item) => !item.is_published).length,
+  };
+  const filteredMeditations = meditations.filter((item) => {
+    if (meditationStatusFilter === "published") return item.is_published;
+    if (meditationStatusFilter === "draft") return !item.is_published;
+    return true;
+  });
+  const filteredPrograms = programs.filter((item) => {
+    if (programStatusFilter === "published") return item.is_published;
+    if (programStatusFilter === "draft") return !item.is_published;
+    return true;
+  });
 
   return (
     <main className="admin-page">
@@ -648,14 +750,14 @@ export default function Admin() {
         <section className="admin-overview">
           <article>
             <span>Meditations</span>
-            <strong>{loading ? "…" : meditations.length}</strong>
+            <strong>{loading ? "…" : `${meditationCounts.published} live / ${meditationCounts.draft} draft`}</strong>
             <button type="button" onClick={() => toggleSection("meditations")}>
               {expandedSections.meditations ? "Hide library" : "Manage library"}
             </button>
           </article>
           <article>
             <span>Programs</span>
-            <strong>{programs.length}</strong>
+            <strong>{`${programCounts.published} live / ${programCounts.draft} draft`}</strong>
             <button type="button" onClick={() => toggleSection("programs")}>
               {expandedSections.programs ? "Hide programs" : "Manage programs"}
             </button>
@@ -739,7 +841,7 @@ export default function Admin() {
               <div className="admin-bulk-help">
                 <strong>CSV columns</strong>
                 <p>title, category, duration_sec, level, description, teacher_name, tags, benefits, is_featured, is_published, audio_url, artwork_url, audio_filename, artwork_filename</p>
-                <small>For restore, use audio_url/artwork_url. For new uploads, use filenames with ZIP. URLs win if both are present.</small>
+                <small>New rows are draft by default. Set is_published=true only for reviewed content. For restore, use audio_url/artwork_url.</small>
               </div>
             </div>
             <button className="admin-primary-button" type="submit" disabled={bulkImporting}>
@@ -821,7 +923,7 @@ export default function Admin() {
               <div className="admin-bulk-help">
                 <strong>Program CSV columns</strong>
                 <p>title, description, goal, level, is_published, artwork_url, artwork_filename, meditation_ids, meditation_titles</p>
-                <small>For restore, use artwork_url. For new uploads, use artwork_filename with ZIP. URLs win if both are present.</small>
+                <small>New rows are draft by default. Draft programs may reference draft meditations; publishing requires published meditations.</small>
               </div>
             </div>
             <button className="admin-primary-button" type="submit" disabled={programBulkImporting}>
@@ -945,7 +1047,7 @@ export default function Admin() {
                   Feature this meditation</label>
                 <label><input type="checkbox" checked={newMeditation.is_published}
                   onChange={(event) => setNewMeditation((item) => ({ ...item, is_published: event.target.checked }))} />
-                  Publish immediately</label>
+                  Publish immediately after creation</label>
               </div>
             </div>
             <button className="admin-primary-button" type="submit" disabled={creating}>
@@ -971,19 +1073,37 @@ export default function Admin() {
             <div className="admin-collapsed-summary">
               <div>
                 <strong>{loading ? "Loading…" : `${meditations.length} meditations ready`}</strong>
-                <p>Open this section only when you need to edit artwork, audio, descriptions, tags, publishing, or delete content.</p>
+                <p>{meditationCounts.published} published and {meditationCounts.draft} draft. Open this section to review drafts, edit content, publish, unpublish, or delete.</p>
               </div>
               <button type="button" onClick={() => toggleSection("meditations")}>Open meditation library</button>
             </div>
           ) : (
             <>
+              <div className="admin-review-toolbar">
+                {["all", "draft", "published"].map((status) => (
+                  <button
+                    type="button"
+                    className={meditationStatusFilter === status ? "is-active" : ""}
+                    onClick={() => setMeditationStatusFilter(status)}
+                    key={status}
+                  >
+                    {status === "all" ? "All" : status === "draft" ? "Drafts" : "Published"}
+                    <span>{meditationCounts[status]}</span>
+                  </button>
+                ))}
+              </div>
               {loading && <div className="admin-empty">Loading your library…</div>}
               {!loading && meditations.length === 0 && (
                 <div className="admin-empty">No meditations yet. Create the first one above.</div>
               )}
+              {!loading && meditations.length > 0 && filteredMeditations.length === 0 && (
+                <div className="admin-empty">No meditations match this status filter.</div>
+              )}
 
               <div className="admin-card-list">
-                {meditations.map((meditation) => (
+                {filteredMeditations.map((meditation) => {
+                  const readinessMessages = readinessMessagesForMeditation(meditation);
+                  return (
                   <article className="admin-card" key={meditation.id}>
                 <aside className="admin-card__media">
                   {meditation.artwork_url ? (
@@ -1012,6 +1132,13 @@ export default function Admin() {
                     </div>
                     <small>#{meditation.id} · {new Date(meditation.created_at).toLocaleDateString()}</small>
                   </div>
+
+                  {!meditation.is_published && readinessMessages.length > 0 && (
+                    <div className="admin-readiness-warning">
+                      <strong>Before publishing</strong>
+                      <span>{readinessMessages.join(" ")}</span>
+                    </div>
+                  )}
 
                   <div className="admin-form-grid admin-form-grid--edit">
                     <label className="admin-field admin-field--wide">
@@ -1079,9 +1206,14 @@ export default function Admin() {
                       <label><input type="checkbox" checked={meditation.is_featured}
                         onChange={(event) => setMeditationField(meditation.id, "is_featured", event.target.checked)} />
                         Featured</label>
-                      <label><input type="checkbox" checked={meditation.is_published}
-                        onChange={(event) => setMeditationField(meditation.id, "is_published", event.target.checked)} />
-                        Published</label>
+                      <button
+                        className={meditation.is_published ? "admin-status-button admin-status-button--draft" : "admin-status-button"}
+                        type="button"
+                        disabled={savingId === meditation.id}
+                        onClick={() => updateMeditationPublishState(meditation, !meditation.is_published)}
+                      >
+                        {meditation.is_published ? "Unpublish" : "Publish"}
+                      </button>
                     </div>
                     <div className="admin-card__actions">
                       <button className="admin-delete-button" type="button"
@@ -1095,7 +1227,8 @@ export default function Admin() {
                   </div>
                 </div>
                   </article>
-                ))}
+                  );
+                })}
               </div>
             </>
           )}
@@ -1117,8 +1250,8 @@ export default function Admin() {
           {!expandedSections.programs ? (
             <div className="admin-collapsed-summary">
               <div>
-                <strong>{programs.length} programs configured</strong>
-                <p>Open this section when you need to create a program, order meditations, replace artwork, or update publishing.</p>
+                <strong>{programCounts.published} published and {programCounts.draft} draft programs</strong>
+                <p>Open this section to review drafts, order meditations, replace artwork, publish, unpublish, or delete.</p>
               </div>
               <button type="button" onClick={() => toggleSection("programs")}>Open program manager</button>
             </div>
@@ -1184,15 +1317,48 @@ export default function Admin() {
               <div className="admin-publish-controls admin-publish-controls--inline">
                 <label><input type="checkbox" checked={newProgram.is_published}
                   onChange={(event) => setNewProgram((item) => ({ ...item, is_published: event.target.checked }))} />
-                  Published</label>
+                  Publish immediately after creation</label>
               </div>
               <button className="admin-primary-button" type="submit">Create program</button>
             </div>
               </form>
 
+              <div className="admin-review-toolbar">
+                {["all", "draft", "published"].map((status) => (
+                  <button
+                    type="button"
+                    className={programStatusFilter === status ? "is-active" : ""}
+                    onClick={() => setProgramStatusFilter(status)}
+                    key={status}
+                  >
+                    {status === "all" ? "All" : status === "draft" ? "Drafts" : "Published"}
+                    <span>{programCounts[status]}</span>
+                  </button>
+                ))}
+              </div>
+
               <div className="admin-program-list">
-                {programs.map((program) => (
+                {filteredPrograms.length === 0 && (
+                  <div className="admin-empty">No programs match this status filter.</div>
+                )}
+                {filteredPrograms.map((program) => {
+                  const readinessMessages = readinessMessagesForProgram(program, meditations);
+                  return (
                   <article className="admin-program-card" key={program.id}>
+                <div className="admin-card__topline">
+                  <div className="admin-statuses">
+                    <span className={program.is_published ? "is-live" : "is-draft"}>
+                      {program.is_published ? "Published" : "Draft"}
+                    </span>
+                  </div>
+                  <small>#{program.id} · {program.meditations?.length ?? 0} practices</small>
+                </div>
+                {!program.is_published && readinessMessages.length > 0 && (
+                  <div className="admin-readiness-warning">
+                    <strong>Before publishing</strong>
+                    <span>{readinessMessages.join(" ")}</span>
+                  </div>
+                )}
                 <div className="admin-form-grid admin-form-grid--edit">
                   <label className="admin-field admin-field--wide">
                     <span>Title</span>
@@ -1257,9 +1423,14 @@ export default function Admin() {
                 </div>
                 <div className="admin-card__bottom">
                   <div className="admin-publish-controls admin-publish-controls--inline">
-                    <label><input type="checkbox" checked={program.is_published}
-                      onChange={(event) => setProgramField(program.id, "is_published", event.target.checked)} />
-                      Published</label>
+                    <button
+                      className={program.is_published ? "admin-status-button admin-status-button--draft" : "admin-status-button"}
+                      type="button"
+                      disabled={savingId === `program-${program.id}`}
+                      onClick={() => updateProgramPublishState(program, !program.is_published)}
+                    >
+                      {program.is_published ? "Unpublish" : "Publish"}
+                    </button>
                     <span>{program.meditations?.length ?? 0} practices</span>
                   </div>
                   <div className="admin-card__actions">
@@ -1273,7 +1444,8 @@ export default function Admin() {
                   </div>
                 </div>
                   </article>
-                ))}
+                  );
+                })}
               </div>
             </>
           )}

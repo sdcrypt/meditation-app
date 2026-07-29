@@ -220,7 +220,7 @@ def build_meditation_payload(row: dict[str, str | None]) -> MeditationCreate:
         tags=split_csv_list(row.get("tags"), ","),
         benefits=split_csv_list(row.get("benefits"), "|"),
         is_featured=parse_bool(row.get("is_featured"), False),
-        is_published=parse_bool(row.get("is_published"), True),
+        is_published=parse_bool(row.get("is_published"), False),
     )
 
 
@@ -276,6 +276,12 @@ def bulk_import_meditations(
             db.add(meditation)
 
         for field, value in payload.model_dump().items():
+            if (
+                field == "is_published"
+                and not is_new
+                and not (row.get("is_published") or "").strip()
+            ):
+                continue
             if field in {"audio_url", "artwork_url"} and value is None:
                 continue
             setattr(meditation, field, value)
