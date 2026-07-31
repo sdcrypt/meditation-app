@@ -17,6 +17,8 @@ services:
         value: production
       - key: FRONTEND_URL
         value: https://stillmorrow.in
+      - key: BACKEND_PUBLIC_URL
+        value: https://api.stillmorrow.in
       - key: PASSWORD_RESET_URL_BASE
         value: https://stillmorrow.in/reset-password
       - key: EMAIL_VERIFICATION_URL_BASE
@@ -76,6 +78,8 @@ services:
         value: production
       - key: FRONTEND_URL
         value: https://stillmorrow.in
+      - key: BACKEND_PUBLIC_URL
+        value: https://api.stillmorrow.in
       - key: EMAIL_PROVIDER
         value: brevo
       - key: EMAIL_FROM

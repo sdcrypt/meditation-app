@@ -653,8 +653,10 @@ button { cursor: pointer; }
 .account-reminder-note,.account-reminder-success,.account-reminder-error { margin:0; color:#7b8882; font-size:10px; line-height:1.55; }
 .account-reminder-success { color:#2d6d5c; font-weight:700; }
 .account-reminder-error { color:#9b5546; font-weight:700; }
-.account-reminder-form button { align-self:flex-start; min-height:38px; padding:0 15px; border:0; border-radius:999px; color:white; background:#24584e; font-size:9px; font-weight:800; letter-spacing:.7px; text-transform:uppercase; }
-.account-reminder-form button:disabled { opacity:.6; cursor:not-allowed; }
+.account-reminder-actions { display:flex; flex-wrap:wrap; gap:10px; }
+.account-reminder-actions button { min-height:38px; padding:0 15px; border:0; border-radius:999px; color:white; background:#24584e; font-size:9px; font-weight:800; letter-spacing:.7px; text-transform:uppercase; }
+.account-reminder-actions .account-reminder-test-button { border:1px solid #d4c0b6; color:#935a47; background:#f4e3db; }
+.account-reminder-actions button:disabled { opacity:.6; cursor:not-allowed; }
 .account-empty-mini { padding:26px 18px; border:1px dashed #cfd4cc; border-radius:14px; color:#7f8c86; background:#f3f4ef; font-size:11px; line-height:1.6; }
 .account-empty-mini h3 { margin:0 0 7px; font-family:"Playfair Display",serif; color:#254d45; font-size:21px; font-weight:500; }
 .account-empty-mini p { margin:0 0 14px; }
