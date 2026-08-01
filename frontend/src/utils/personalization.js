@@ -37,6 +37,9 @@ const durationMatchesPreference = (preference, seconds) => {
   return true;
 };
 
+const durationPreferenceLabel = (preference) =>
+  DURATION_OPTIONS.find((item) => item.id === preference)?.label;
+
 const searchableMeditationText = (meditation) =>
   [
     meditation.title,
@@ -46,11 +49,61 @@ const searchableMeditationText = (meditation) =>
     ...cleanListValues(meditation.benefits),
   ].join(" ").toLowerCase();
 
-export const rankMeditations = (meditations, preferences, history = []) => {
+const addReason = (reasons, reason) => {
+  if (reason && !reasons.includes(reason)) reasons.push(reason);
+};
+
+const daysSince = (value) => {
+  if (!value) return null;
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return null;
+  return (Date.now() - timestamp) / 86_400_000;
+};
+
+const getFavoriteMeditations = (favorites = []) =>
+  favorites.map((favorite) => favorite.meditation).filter(Boolean);
+
+const buildProgramBoosts = (enrolledPrograms = []) => {
+  const boosts = new Map();
+  enrolledPrograms.forEach((enrollment) => {
+    const program = enrollment.program ?? enrollment;
+    if (!program || program.completion_percent >= 100) return;
+    if (program.next_meditation?.id) {
+      boosts.set(program.next_meditation.id, {
+        score: 50,
+        reason: `Next in ${program.title}`,
+      });
+    }
+    (program.meditations ?? []).forEach((item) => {
+      if (!item?.meditation?.id || item.is_completed) return;
+      const existing = boosts.get(item.meditation.id);
+      if (!existing) {
+        boosts.set(item.meditation.id, {
+          score: item.is_started ? 35 : 18,
+          reason: item.is_started ? `Continue ${program.title}` : `Part of ${program.title}`,
+        });
+      }
+    });
+  });
+  return boosts;
+};
+
+export const rankMeditations = (
+  meditations,
+  preferences,
+  history = [],
+  favorites = [],
+  enrolledPrograms = []
+) => {
   if (!preferences) return meditations;
 
   const completedIds = new Set(
     history.filter((item) => item.is_completed).map((item) => item.meditation_id)
+  );
+  const recentCompletedIds = new Set(
+    history
+      .filter((item) => item.is_completed && (daysSince(item.completed_at || item.last_activity_at) ?? 999) <= 14)
+      .map((item) => item.meditation_id)
   );
   const historyCategoryCounts = history.reduce((counts, item) => {
     const category = item.category?.toLowerCase();
@@ -66,23 +119,47 @@ export const rankMeditations = (meditations, preferences, history = []) => {
   const practiceTime = PRACTICE_TIME_OPTIONS.find(
     (item) => item.id === preferences.practiceTime
   );
+  const favoriteMeditations = getFavoriteMeditations(favorites);
+  const favoriteTexts = favoriteMeditations.map(searchableMeditationText);
+  const favoriteCategories = new Set(
+    favoriteMeditations
+      .map((item) => item.category?.toLowerCase())
+      .filter(Boolean)
+  );
+  const favoriteTeachers = new Set(
+    favoriteMeditations
+      .map((item) => item.teacher_name?.toLowerCase())
+      .filter(Boolean)
+  );
+  const favoriteIds = new Set(
+    favorites.map((item) => item.meditation_id).filter(Boolean)
+  );
+  const programBoosts = buildProgramBoosts(enrolledPrograms);
 
   return meditations
     .map((meditation) => {
       const text = searchableMeditationText(meditation);
-      let score = meditation.is_featured ? 0.5 : 0;
+      let score = meditation.is_featured ? 5 : 0;
       const reasons = [];
+      const programBoost = programBoosts.get(meditation.id);
+      if (programBoost) {
+        score += programBoost.score;
+        addReason(reasons, programBoost.reason);
+      }
 
       selectedGoals.forEach((goal) => {
         if (goal.keywords.some((keyword) => text.includes(keyword))) {
-          score += 6;
-          reasons.push(goal.label);
+          score += 30;
+          addReason(reasons, `Because you chose ${goal.label.toLowerCase()}`);
         }
       });
 
       if (durationMatchesPreference(preferences.duration, meditation.duration_sec)) {
-        score += 3;
-        reasons.push("Your preferred length");
+        score += 15;
+        const label = durationPreferenceLabel(preferences.duration);
+        if (label && preferences.duration !== "any") {
+          addReason(reasons, `Fits your ${label.toLowerCase()} preference`);
+        }
       }
 
       const meditationLevel = meditation.level?.toLowerCase();
@@ -91,27 +168,56 @@ export const rankMeditations = (meditations, preferences, history = []) => {
         meditationLevel === preferences.experience ||
         meditationLevel === "all levels"
       ) {
-        score += 2;
+        score += 15;
+        if (preferences.experience && preferences.experience !== "all levels") {
+          addReason(reasons, `${preferences.experience} friendly`);
+        }
       }
 
       if (practiceTime?.keywords.some((keyword) => text.includes(keyword))) {
-        score += 1.5;
-        reasons.push(`For your ${practiceTime.label.toLowerCase()}`);
+        score += 8;
+        addReason(reasons, `For your ${practiceTime.label.toLowerCase()}`);
       }
 
       const categoryHistory =
         historyCategoryCounts[meditation.category?.toLowerCase()] || 0;
       if (categoryHistory) {
-        score += Math.min(4, categoryHistory * 1.25);
-        reasons.push("Inspired by your history");
+        score += Math.min(10, categoryHistory * 2.5);
+        addReason(reasons, `More ${meditation.category}`);
       }
 
-      if (completedIds.has(meditation.id)) score -= 1.5;
+      if (favoriteCategories.has(meditation.category?.toLowerCase())) {
+        score += 10;
+        addReason(reasons, "Similar to saved practices");
+      }
+      if (favoriteTeachers.has(meditation.teacher_name?.toLowerCase())) {
+        score += 6;
+        addReason(reasons, "A teacher you saved");
+      }
+      if (
+        favoriteTexts.some((favoriteText) =>
+          cleanListValues(meditation.tags).some((tag) => favoriteText.includes(tag.toLowerCase()))
+        )
+      ) {
+        score += 8;
+        addReason(reasons, "Matches your saved themes");
+      }
+
+      if (favoriteIds.has(meditation.id)) {
+        score += 4;
+        addReason(reasons, "Saved by you");
+      }
+
+      if (completedIds.has(meditation.id)) score -= 10;
+      if (recentCompletedIds.has(meditation.id)) score -= 25;
+      if (!history.some((item) => item.meditation_id === meditation.id)) score += 3;
+      if (meditation.is_featured) addReason(reasons, "Featured practice");
 
       return {
         ...meditation,
         personalizationScore: score,
-        recommendationReason: reasons[0] || "Selected for you",
+        recommendationReasons: reasons.slice(0, 3),
+        recommendationReason: reasons.slice(0, 2).join(" · ") || "Selected for you",
       };
     })
     .sort(
