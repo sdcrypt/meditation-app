@@ -97,12 +97,6 @@ export default function Home() {
                 Browse programs
               </Link>
             </div>
-            <div className="hero__proof">
-              <div className="avatar-stack" aria-hidden="true">
-                <span>01</span><span>02</span><span>03</span><span>✓</span>
-              </div>
-              <p><strong>No inflated claims.</strong><br />Just the features available in the app today.</p>
-            </div>
           </div>
 
           <div className="hero-visual" aria-label="A peaceful meditation player">
