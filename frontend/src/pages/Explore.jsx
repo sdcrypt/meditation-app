@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import MeditationCard from "../components/MeditationCard";
 import ProgramCard from "../components/ProgramCard";
 import { API_BASE_URL, DEVICE_ID } from "../config";
+import { useFavorites } from "../context/FavoritesContext";
 import { usePreferences } from "../context/PreferencesContext";
 import {
   DURATION_OPTIONS,
@@ -27,6 +28,7 @@ const durationMatches = (duration, seconds) => {
 export default function Explore() {
   const [meditations, setMeditations] = useState([]);
   const [programs, setPrograms] = useState([]);
+  const [enrolledPrograms, setEnrolledPrograms] = useState([]);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [duration, setDuration] = useState("all");
@@ -40,6 +42,7 @@ export default function Explore() {
     shouldPrompt,
     openOnboarding,
   } = usePreferences();
+  const { favorites } = useFavorites();
 
   useEffect(() => {
     if (shouldPrompt) openOnboarding();
@@ -64,14 +67,25 @@ export default function Explore() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`${API_BASE_URL}/programs/?limit=6`, {
-      credentials: "include",
-      signal: controller.signal,
-    })
-      .then((response) => response.ok ? response.json() : [])
-      .then(setPrograms)
+    Promise.all([
+      fetch(`${API_BASE_URL}/programs/?limit=6`, {
+        credentials: "include",
+        signal: controller.signal,
+      }).then((response) => response.ok ? response.json() : []),
+      fetch(`${API_BASE_URL}/programs/me/enrollments`, {
+        credentials: "include",
+        signal: controller.signal,
+      }).then((response) => response.ok ? response.json() : []),
+    ])
+      .then(([programData, enrollmentData]) => {
+        setPrograms(programData);
+        setEnrolledPrograms(enrollmentData);
+      })
       .catch((requestError) => {
-        if (requestError.name !== "AbortError") setPrograms([]);
+        if (requestError.name !== "AbortError") {
+          setPrograms([]);
+          setEnrolledPrograms([]);
+        }
       });
     return () => controller.abort();
   }, []);
@@ -101,8 +115,14 @@ export default function Explore() {
   );
 
   const personalizedMeditations = useMemo(
-    () => rankMeditations(meditations, preferences, history).slice(0, 3),
-    [history, meditations, preferences]
+    () => rankMeditations(
+      meditations,
+      preferences,
+      history,
+      favorites,
+      enrolledPrograms
+    ).slice(0, 3),
+    [enrolledPrograms, favorites, history, meditations, preferences]
   );
 
   const preferenceLabels = useMemo(() => {
@@ -188,7 +208,7 @@ export default function Explore() {
                   <button onClick={openOnboarding}>Adjust</button>
                 </div>
               </div>
-              <p>Selected from your intentions, preferred rhythm, and listening history.</p>
+              <p>Ranked from your goals, preferred duration, experience level, saved practices, history, and active programs.</p>
             </div>
             <div className="featured-library-grid">
               {personalizedMeditations.map((meditation) => (

@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     APP_ENV: str = "development"
     FRONTEND_URL: str = "http://localhost:5173"
+    BACKEND_PUBLIC_URL: str = "http://localhost:8000"
     PASSWORD_RESET_URL_BASE: str = "http://localhost:5173/reset-password"
     EMAIL_VERIFICATION_URL_BASE: str = "http://localhost:5173/verify-email"
 
@@ -85,6 +86,8 @@ class Settings(BaseSettings):
                 raise ValueError("AUTH_COOKIE_SECURE must be true in production")
             if not self.FRONTEND_URL.startswith("https://"):
                 raise ValueError("FRONTEND_URL must use https in production")
+            if not self.BACKEND_PUBLIC_URL.startswith("https://"):
+                raise ValueError("BACKEND_PUBLIC_URL must use https in production")
             if not self.PASSWORD_RESET_URL_BASE.startswith("https://"):
                 raise ValueError("PASSWORD_RESET_URL_BASE must use https in production")
             if not self.EMAIL_VERIFICATION_URL_BASE.startswith("https://"):

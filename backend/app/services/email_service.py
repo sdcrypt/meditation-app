@@ -57,13 +57,14 @@ def build_email_verification_email(verification_url: str) -> tuple[str, str, str
     return subject, text_body, html_body
 
 
-def build_practice_reminder_email(practice_url: str) -> tuple[str, str, str]:
+def build_practice_reminder_email(practice_url: str, unsubscribe_url: str) -> tuple[str, str, str]:
     """Build the subject, text body, and HTML body for a practice reminder."""
     subject = "Your Still practice is waiting"
     text_body = (
         "Take a few minutes to return to your breath.\n\n"
         f"Start today’s practice here:\n{practice_url}\n\n"
-        "You can change reminder settings from your Still account."
+        "You can change reminder settings from your Still account.\n\n"
+        f"Stop these reminder emails:\n{unsubscribe_url}"
     )
     html_body = f"""
     <div style="font-family:Arial,sans-serif;color:#173f3a;line-height:1.6">
@@ -75,6 +76,10 @@ def build_practice_reminder_email(practice_url: str) -> tuple[str, str, str]:
         </a>
       </p>
       <p style="color:#6f8079;font-size:13px">You can change reminder settings from your Still account.</p>
+      <p style="color:#8a9691;font-size:12px">
+        No longer want reminder emails?
+        <a href="{unsubscribe_url}" style="color:#23584e">Unsubscribe here</a>.
+      </p>
     </div>
     """
     return subject, text_body, html_body
@@ -108,7 +113,7 @@ def send_email_verification_email(to_email: str, verification_url: str) -> bool:
     return True
 
 
-def send_practice_reminder_email(to_email: str, practice_url: str) -> bool:
+def send_practice_reminder_email(to_email: str, practice_url: str, unsubscribe_url: str) -> bool:
     """Send a practice reminder email using Brevo when email is enabled."""
     if settings.EMAIL_PROVIDER == "none":
         logger.info("Email provider disabled; practice reminder skipped for %s", to_email)
@@ -117,7 +122,7 @@ def send_practice_reminder_email(to_email: str, practice_url: str) -> bool:
     if settings.EMAIL_PROVIDER != "brevo":
         raise RuntimeError("Unsupported email provider")
 
-    subject, text_body, html_body = build_practice_reminder_email(practice_url)
+    subject, text_body, html_body = build_practice_reminder_email(practice_url, unsubscribe_url)
     send_with_brevo(to_email, subject, text_body, html_body, purpose="practice reminder")
     return True
 

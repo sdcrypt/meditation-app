@@ -43,6 +43,7 @@ export default function Account() {
   const [enrolledPrograms, setEnrolledPrograms] = useState([]);
   const [reminder, setReminder] = useState(null);
   const [reminderSaving, setReminderSaving] = useState(false);
+  const [reminderTesting, setReminderTesting] = useState(false);
   const [reminderMessage, setReminderMessage] = useState("");
   const [reminderError, setReminderError] = useState("");
   const [dashboardLoading, setDashboardLoading] = useState(true);
@@ -173,6 +174,35 @@ export default function Account() {
       setReminderError(error.message);
     } finally {
       setReminderSaving(false);
+    }
+  };
+
+  const sendTestReminder = async () => {
+    setReminderTesting(true);
+    setReminderMessage("");
+    setReminderError("");
+    try {
+      const response = await csrfFetch(`${API_BASE_URL}/reminders/me/send-test`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (isUnauthorized(response)) {
+          markSessionExpired();
+          navigate("/login", {
+            replace: true,
+            state: { from: location, error: sessionExpiredMessage },
+          });
+          return;
+        }
+        throw new Error(payload.detail || "Unable to send test reminder.");
+      }
+      setReminderMessage(payload.message || "Test reminder sent.");
+    } catch (error) {
+      setReminderError(error.message);
+    } finally {
+      setReminderTesting(false);
     }
   };
 
@@ -436,16 +466,26 @@ export default function Account() {
                   </label>
                 </div>
                 <p className="account-reminder-note">
-                  Reminders are sent by email. Verified email is required.
+                  Reminders are sent by email. Verified email is required. Every reminder email includes an unsubscribe link.
                 </p>
                 {(reminderMessage || reminderError) && (
                   <p className={reminderError ? "account-reminder-error" : "account-reminder-success"}>
                     {reminderError || reminderMessage}
                   </p>
                 )}
-                <button type="submit" disabled={reminderSaving}>
-                  {reminderSaving ? "Saving…" : "Save reminders"}
-                </button>
+                <div className="account-reminder-actions">
+                  <button type="submit" disabled={reminderSaving || reminderTesting}>
+                    {reminderSaving ? "Saving…" : "Save reminders"}
+                  </button>
+                  <button
+                    type="button"
+                    className="account-reminder-test-button"
+                    disabled={reminderSaving || reminderTesting}
+                    onClick={sendTestReminder}
+                  >
+                    {reminderTesting ? "Sending…" : "Send test reminder"}
+                  </button>
+                </div>
               </form>
             ) : (
               <div className="account-empty-mini">Loading reminder settings…</div>

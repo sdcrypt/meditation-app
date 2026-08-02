@@ -693,7 +693,9 @@ Production backend must use:
 ```env
 APP_ENV=production
 FRONTEND_URL=https://stillmorrow.in
+BACKEND_PUBLIC_URL=https://api.stillmorrow.in
 PASSWORD_RESET_URL_BASE=https://stillmorrow.in/reset-password
+EMAIL_VERIFICATION_URL_BASE=https://stillmorrow.in/verify-email
 CORS_ORIGINS=["https://stillmorrow.in","https://www.stillmorrow.in"]
 AUTH_COOKIE_SECURE=true
 AUTH_COOKIE_DOMAIN=.stillmorrow.in
