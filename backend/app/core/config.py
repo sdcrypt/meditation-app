@@ -1,6 +1,7 @@
+from typing import List
+
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
-from typing import List
 
 
 class Settings(BaseSettings):
@@ -51,6 +52,18 @@ class Settings(BaseSettings):
     EMAIL_FROM: str = "Still <no-reply@example.com>"
     BREVO_API_KEY: str = ""
 
+    @field_validator(
+        "FRONTEND_URL",
+        "BACKEND_PUBLIC_URL",
+        "PASSWORD_RESET_URL_BASE",
+        "EMAIL_VERIFICATION_URL_BASE",
+        mode="before",
+    )
+    @classmethod
+    def normalize_url_value(cls, value: str) -> str:
+        """Trim accidental whitespace from deployment URL settings."""
+        return str(value).strip().rstrip("/")
+
     @field_validator("AUTH_COOKIE_SAMESITE")
     @classmethod
     def validate_cookie_samesite(cls, value: str) -> str:
@@ -85,13 +98,24 @@ class Settings(BaseSettings):
             if not self.AUTH_COOKIE_SECURE:
                 raise ValueError("AUTH_COOKIE_SECURE must be true in production")
             if not self.FRONTEND_URL.startswith("https://"):
-                raise ValueError("FRONTEND_URL must use https in production")
+                raise ValueError(
+                    f"FRONTEND_URL must use https in production; got {self.FRONTEND_URL!r}"
+                )
             if not self.BACKEND_PUBLIC_URL.startswith("https://"):
-                raise ValueError("BACKEND_PUBLIC_URL must use https in production")
+                raise ValueError(
+                    "BACKEND_PUBLIC_URL must use https in production; "
+                    f"got {self.BACKEND_PUBLIC_URL!r}"
+                )
             if not self.PASSWORD_RESET_URL_BASE.startswith("https://"):
-                raise ValueError("PASSWORD_RESET_URL_BASE must use https in production")
+                raise ValueError(
+                    "PASSWORD_RESET_URL_BASE must use https in production; "
+                    f"got {self.PASSWORD_RESET_URL_BASE!r}"
+                )
             if not self.EMAIL_VERIFICATION_URL_BASE.startswith("https://"):
-                raise ValueError("EMAIL_VERIFICATION_URL_BASE must use https in production")
+                raise ValueError(
+                    "EMAIL_VERIFICATION_URL_BASE must use https in production; "
+                    f"got {self.EMAIL_VERIFICATION_URL_BASE!r}"
+                )
             if self.JWT_SECRET_KEY == "development-only-change-me":
                 raise ValueError("JWT_SECRET_KEY must be changed in production")
             if self.EMAIL_PROVIDER == "none":
