@@ -4,6 +4,7 @@ import ProgramCard from "../components/ProgramCard";
 import { API_BASE_URL, DEVICE_ID } from "../config";
 import { useFavorites } from "../context/FavoritesContext";
 import { usePreferences } from "../context/PreferencesContext";
+import { csrfFetch } from "../utils/authFetch";
 import {
   DURATION_OPTIONS,
   GOAL_OPTIONS,
@@ -36,6 +37,10 @@ export default function Explore() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [history, setHistory] = useState([]);
+  const [aiQuery, setAiQuery] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [aiRecommendations, setAiRecommendations] = useState(null);
   const {
     preferences,
     hasPreferences,
@@ -167,6 +172,36 @@ export default function Explore() {
     setLevel("all");
   };
 
+  const requestAiRecommendations = async (event) => {
+    event.preventDefault();
+    const normalizedQuery = aiQuery.trim();
+    if (normalizedQuery.length < 3 || aiLoading) return;
+
+    setAiLoading(true);
+    setAiError("");
+    try {
+      const response = await csrfFetch(`${API_BASE_URL}/ai/recommendations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: normalizedQuery,
+          device_id: Number(DEVICE_ID),
+          limit: 3,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.detail || "Unable to create recommendations.");
+      }
+      setAiRecommendations(payload);
+    } catch (requestError) {
+      setAiError(requestError.message);
+      setAiRecommendations(null);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <main className="explore-page">
       <section className="explore-hero">
@@ -197,6 +232,48 @@ export default function Explore() {
       </section>
 
       <div className="explore-content site-shell">
+        {!hasFilters && (
+          <section className="ai-recommendations">
+            <div className="ai-recommendations__copy">
+              <p className="eyebrow">Find the right practice</p>
+              <h2>Find a practice for this moment</h2>
+              <p>Mention how you feel, how much time you have, or the kind of session you want.</p>
+            </div>
+            <form className="ai-recommendations__form" onSubmit={requestAiRecommendations}>
+              <label>
+                <span>Practice request</span>
+                <input
+                  value={aiQuery}
+                  onChange={(event) => setAiQuery(event.target.value)}
+                  placeholder="I feel stressed and want a short calming practice"
+                  maxLength={500}
+                />
+              </label>
+              <button type="submit" disabled={aiQuery.trim().length < 3 || aiLoading}>
+                {aiLoading ? "Finding..." : "Recommend"}
+              </button>
+            </form>
+            {aiError && <p className="ai-recommendations__status">{aiError}</p>}
+            {aiRecommendations?.items?.length > 0 && (
+              <>
+                <div className="ai-recommendations__meta">
+                  <span>{aiRecommendations.fallback ? "Recommended from your library" : "Recommended for this moment"}</span>
+                </div>
+                <div className="featured-library-grid">
+                  {aiRecommendations.items.map((item) => (
+                    <MeditationCard
+                      key={item.meditation.id}
+                      meditation={item.meditation}
+                      featured
+                      reason={item.reason}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </section>
+        )}
+
         {hasPreferences && personalizedMeditations.length > 0 && !hasFilters && (
           <section className="explore-personalized">
             <div className="explore-section-heading">

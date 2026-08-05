@@ -52,6 +52,10 @@ class Settings(BaseSettings):
     EMAIL_FROM: str = "Still <no-reply@example.com>"
     BREVO_API_KEY: str = ""
 
+    # AI recommendations
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-5"
+
     @field_validator(
         "FRONTEND_URL",
         "BACKEND_PUBLIC_URL",
