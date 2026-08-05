@@ -701,6 +701,9 @@ AUTH_COOKIE_SECURE=true
 AUTH_COOKIE_DOMAIN=.stillmorrow.in
 EMAIL_PROVIDER=brevo
 EMAIL_FROM=Still <no-reply@stillmorrow.in>
+# Optional. Enables AI recommendations; otherwise the app uses fallback ranking.
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_MODEL=gpt-5
 ```
 
 Generate a strong production JWT secret with:
